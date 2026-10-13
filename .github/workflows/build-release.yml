@@ -1,4 +1,4 @@
-name: Build Windows EXE and publish release
+name: Build native Windows app and publish release
 on:
   push:
     branches:
@@ -7,7 +7,6 @@ on:
       - 'v*'
     paths:
       - 'app/**'
-      - 'requirements.txt'
       - '.github/workflows/build-release.yml'
   workflow_dispatch:
 permissions:
@@ -18,36 +17,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
         with:
-          python-version: '3.12'
-      - name: Install dependencies
-        run: python -m pip install --upgrade pip && pip install -r requirements.txt
-      - name: Build standalone EXE
-        run: pyinstaller --noconfirm --clean --onefile --windowed --name NOVA_PC_BOOST --collect-all psutil app/NovaPCBoost.py
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore app/NovaPCBoost.csproj
+      - name: Build and publish single-file Windows app
+        run: dotnet publish app/NovaPCBoost.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
       - name: Publish EXE to GitHub Release
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.4.0' }}
+          GH_TOKEN: \${{ github.token }}
+          RELEASE_TAG: \${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.5.0' }}
         shell: pwsh
         run: |
           $tag = $env:RELEASE_TAG
           $notes = @'
-          NOVA PC BOOST v1.4.0 — обновлённый Windows-интерфейс.
+          NOVA PC BOOST v1.5.0 — нативное Windows-приложение на C# / WPF, без Python.
 
-          • Новый тёмный Control Center
+          • Современный тёмный Control Center
           • Профили CS2, Rust и Dota 2
-          • Каталог Windows-твиков
-          • Резервные копии и откат применённых параметров
+          • Windows-твики с сохранением исходных значений и откатом
           • Мониторинг CPU, RAM и диска
-          • Системные инструменты и очистка временных файлов старше 48 часов
+          • Системные инструменты и безопасная очистка старых временных файлов
 
           Проверьте EXE антивирусом перед запуском.
           '@
-          gh release create $tag "dist/NOVA_PC_BOOST.exe" --title "NOVA PC BOOST $tag" --notes $notes --latest
+          gh release create $tag "publish/NOVA_PC_BOOST.exe" --title "NOVA PC BOOST $tag" --notes $notes --latest
           if ($LASTEXITCODE -ne 0) {
-            gh release upload $tag "dist/NOVA_PC_BOOST.exe" --clobber
+            gh release upload $tag "publish/NOVA_PC_BOOST.exe" --clobber
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             gh release edit $tag --title "NOVA PC BOOST $tag" --notes $notes --latest
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
