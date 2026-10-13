@@ -29,7 +29,7 @@
     if (!response.ok) throw new Error('Release API unavailable');
     const release = await response.json();
     const rawVersion = release.tag_name || '';
-    const versionMatch = rawVersion.match(/^v?(\\d+\\.\\d+(?:\\.\\d+)?(?:[-+][0-9A-Za-z.-]+)?)$/i);
+    const versionMatch = rawVersion.match(/^v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?)$/i);
     if (versionMatch) versionNodes.forEach(node => node.textContent = 'v' + versionMatch[1]);
     if (dateNode && release.published_at) {
       const date = new Date(release.published_at);
