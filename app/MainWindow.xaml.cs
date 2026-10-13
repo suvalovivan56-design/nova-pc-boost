@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 
@@ -155,7 +156,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var mem = new MemoryStatus(); GlobalMemoryStatusEx(ref mem);
+            var mem = new MemoryStatus { Length = (uint)Marshal.SizeOf<MemoryStatus>() }; GlobalMemoryStatusEx(ref mem);
             var ramPercent = mem.TotalPhys == 0 ? 0 : (double)(mem.TotalPhys - mem.AvailPhys) / mem.TotalPhys * 100;
             var drive = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\");
             var diskPercent = drive.TotalSize == 0 ? 0 : (double)(drive.TotalSize - drive.AvailableFreeSpace) / drive.TotalSize * 100;
@@ -498,7 +499,20 @@ public partial class MainWindow : Window
         {
             using var key = Registry.CurrentUser.CreateSubKey(Key);
             if (key is null) return;
-            if (Exists) key.SetValue(Name, Value!, Kind);
+            if (Exists)
+            {
+                object restored = Value is JsonElement element ? element.ValueKind switch
+                {
+                    JsonValueKind.Number when element.TryGetInt32(out var number) => number,
+                    JsonValueKind.Number when element.TryGetInt64(out var longNumber) => longNumber,
+                    JsonValueKind.String => element.GetString() ?? "",
+                    JsonValueKind.True => 1,
+                    JsonValueKind.False => 0,
+                    JsonValueKind.Array => element.EnumerateArray().Select(x => x.GetString() ?? "").ToArray(),
+                    _ => throw new InvalidOperationException("Неподдерживаемый тип значения для отката.")
+                } : Value!;
+                key.SetValue(Name, restored, Kind);
+            }
             else if (key.GetValueNames().Contains(Name)) key.DeleteValue(Name, false);
         }
     }
