@@ -32,7 +32,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}" BorderBrush="#263543" BorderThickness="1">
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -47,9 +47,9 @@
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="Background" Value="{StaticResource Side}"/>
       <Setter Property="Foreground" Value="{StaticResource Muted}"/>
-      <Setter Property="Padding" Value="14,13"/>
+      <Setter Property="Padding" Value="14,12"/>
       <Setter Property="Margin" Value="0,3,0,3"/>
-      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontSize" Value="12"/>
     </Style>
   </Application.Resources>
 </Application>
