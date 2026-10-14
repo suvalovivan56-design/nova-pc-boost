@@ -14,13 +14,13 @@ namespace NovaPCBoost;
 
 public partial class MainWindow : Window
 {
-    private const string AccentHex = "#B8FF57";
-    private const string CyanHex = "#58D9FF";
-    private const string PanelHex = "#111923";
-    private const string PanelAltHex = "#151F2A";
-    private const string LineHex = "#263543";
-    private const string MutedHex = "#A7B1BD";
-    private const string TextHex = "#F5F7FA";
+    private const string AccentHex = "#BCFF5B";
+    private const string CyanHex = "#8DFFCB";
+    private const string PanelHex = "#111812";
+    private const string PanelAltHex = "#182119";
+    private const string LineHex = "#29382B";
+    private const string MutedHex = "#A2AEA0";
+    private const string TextHex = "#F4F7F1";
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly string _statePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NOVA_PC_BOOST", "restore_state.json");
     private readonly Dictionary<string, JsonElement> _backup = new();
