@@ -4,6 +4,8 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -681,6 +683,50 @@ public partial class MainWindow : Window
         clean.Children.Add(Txt("Одна кнопка: временные файлы пользователя и Windows старше 48 часов, пустые папки Temp и корзина. Личные файлы, загрузки и кэш браузеров не удаляются; занятые файлы пропускаются.", 11, MutedHex));
         clean.Children.Add(Btn("⚡ Очистить систему", (_, _) => CleanTemp()));
         PageContent.Children.Add(Card(clean));
+
+        AddSection("02 / UPDATES", "Обновления NOVA", "Проверка выполняется только по нажатию кнопки через официальный GitHub API. Автоматической загрузки и установки нет.");
+        var updates = new StackPanel();
+        updates.Children.Add(Txt("Текущая версия: " + GetAppVersion(), 12, TextHex, true));
+        updates.Children.Add(Txt("NOVA не скачивает и не запускает обновления автоматически. При наличии новой версии ты сам откроешь официальный релиз.", 11, MutedHex));
+        updates.Children.Add(Btn("Проверить обновления", async (_, _) => await CheckForUpdatesAsync()));
+        PageContent.Children.Add(Card(updates));
+    }
+
+    private static string GetAppVersion() => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "не определена";
+
+    private async Task CheckForUpdatesAsync()
+    {
+        const string releaseApi = "https://api.github.com/repos/suvalovivan56-design/nova-pc-boost/releases/latest";
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+            client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("NOVA-PC-BOOST", GetAppVersion()));
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+            using var response = await client.GetAsync(releaseApi);
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var root = doc.RootElement;
+            var tag = root.TryGetProperty("tag_name", out var tagElement) ? tagElement.GetString() : null;
+            var url = root.TryGetProperty("html_url", out var urlElement) ? urlElement.GetString() : null;
+            if (string.IsNullOrWhiteSpace(tag) || string.IsNullOrWhiteSpace(url)) throw new InvalidOperationException("GitHub не вернул тег или ссылку релиза.");
+            var latest = tag.TrimStart('v', 'V');
+            if (Version.TryParse(latest, out var latestVersion) && Version.TryParse(GetAppVersion(), out var currentVersion) && latestVersion > currentVersion)
+            {
+                LogAction("INFO", "Доступно обновление", tag);
+                if (MessageBox.Show($"Доступна NOVA PC BOOST {tag}.\nУстановлена версия {GetAppVersion()}.\n\nОткрыть официальный релиз GitHub? Программа ничего не скачает и не установит сама.", "NOVA PC BOOST — обновление", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            else
+            {
+                MessageBox.Show($"Установлена версия {GetAppVersion()}.\nПоследний опубликованный релиз: {tag}.\n\nЕсли версии совпадают, обновление не требуется.", "NOVA PC BOOST — обновления", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            LogAction("INFO", "Проверка обновлений", "Установлено " + GetAppVersion() + "; последний релиз " + tag);
+        }
+        catch (Exception ex)
+        {
+            LogAction("WARN", "Проверка обновлений не удалась", ex.Message);
+            MessageBox.Show("Не удалось проверить GitHub. Проверь подключение и попробуй позже.\n\n" + ex.Message, "NOVA PC BOOST — обновления", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void ShowRestore()
@@ -724,7 +770,9 @@ public partial class MainWindow : Window
             if (MessageBox.Show("Откатить все сохранённые изменения?", "NOVA PC BOOST", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             foreach (var id in _regBackups.Keys.Concat(_powerBackups.Keys).Distinct().ToList()) RestoreTweak(id, false);
             foreach (var id in _serviceBackups.Keys.ToList()) RestoreService(id, false);
-            MessageBox.Show("Операция отката завершена.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
+            LoadBackups();
+            int remaining = _regBackups.Count + _powerBackups.Keys.Except(_regBackups.Keys).Count() + _serviceBackups.Count;
+            MessageBox.Show(remaining == 0 ? "Откат завершён: все сохранённые изменения подтверждены и удалены из списка резервных копий." : $"Откат выполнен не полностью. Осталось записей для повторной попытки: {remaining}. Открой журнал и проверь службы/параметры, которые не удалось восстановить.", "NOVA PC BOOST", MessageBoxButton.OK, remaining == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             ShowRestore();
         }, false));
     }
@@ -732,6 +780,7 @@ public partial class MainWindow : Window
     private void ApplyTweak(string id, bool skipConfirmation = false)
     {
         if (!OperatingSystem.IsWindows()) { MessageBox.Show("Твики доступны только в Windows."); return; }
+        if (_backupLoadError is not null) { MessageBox.Show("NOVA не будет менять систему, пока не удастся прочитать файл резервных копий. Сначала проверь или восстанови файл:\n" + _statePath + "\n\n" + _backupLoadError, "NOVA PC BOOST — защита", MessageBoxButton.OK, MessageBoxImage.Error); return; }
         if (!_tweaks.TryGetValue(id, out var spec)) return;
         if (!skipConfirmation && MessageBox.Show(
             $"Применить настройку «{spec.Title}»?\n\n{spec.Description}\n\nРиск и ограничения: {spec.Warning}\n\nПрирост FPS не гарантируется. NOVA сначала сохранит исходные значения.",
@@ -749,7 +798,10 @@ public partial class MainWindow : Window
                 }
                 SaveBackups();
                 RunChecked("powercfg", "/setactive SCHEME_MIN");
-                _ = RunCapture("powercfg", "/getactivescheme");
+                var active = RunCapture("powercfg", "/getactivescheme");
+                const string highPerformanceGuid = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
+                if (!active.Contains(highPerformanceGuid, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Windows не подтвердила включение плана «Высокая производительность». Возможно, этот план недоступен.");
             }
             else
             {
@@ -775,7 +827,14 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             LogAction("ERROR", "Не удалось применить твик", id + ": " + ex.Message);
-            MessageBox.Show("Не удалось применить твик. Резервная копия не удалена, если она уже была создана:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error);
+            bool rollbackOk = false;
+            if (_regBackups.ContainsKey(id) || _powerBackups.ContainsKey(id))
+            {
+                try { RestoreTweak(id, false); rollbackOk = !_regBackups.ContainsKey(id) && !_powerBackups.ContainsKey(id); }
+                catch (Exception rollbackError) { LogAction("ERROR", "Аварийный откат после ошибки применения", id + ": " + rollbackError.Message); }
+            }
+            var rollbackText = rollbackOk ? "\n\nNOVA автоматически вернула исходные параметры после ошибки." : "\n\nРезервная копия сохранена. Открой «Резервные копии и откат» и повтори откат вручную.";
+            MessageBox.Show("Не удалось полностью применить твик:\n" + ex.Message + rollbackText, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -909,6 +968,7 @@ public partial class MainWindow : Window
     private void ApplyService(string id)
     {
         if (!OperatingSystem.IsWindows() || !_services.ContainsKey(id)) return;
+        if (_backupLoadError is not null) { MessageBox.Show("NOVA не будет менять службы, пока не удастся прочитать файл резервных копий. Сначала проверь или восстанови файл:\n" + _statePath + "\n\n" + _backupLoadError, "NOVA PC BOOST — защита", MessageBoxButton.OK, MessageBoxImage.Error); return; }
         if (!EnsureServiceElevation("disable", id)) return;
         var spec = _services[id];
         try
@@ -917,13 +977,26 @@ public partial class MainWindow : Window
             SaveBackups();
             try { RunChecked("sc.exe", "stop " + spec.ServiceName); } catch { /* service may already be stopped or not stoppable */ }
             RunChecked("sc.exe", "config " + spec.ServiceName + " start= disabled");
+            var verifiedConfig = RunCapture("sc.exe", "qc " + spec.ServiceName);
+            if (!System.Text.RegularExpressions.Regex.IsMatch(verifiedConfig, @"START_TYPE\s*:\s*\d+\s+DISABLED", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                throw new InvalidOperationException("Windows не подтвердила отключение службы.");
             SaveBackups();
             LogAction("INFO", "Отключена служба", spec.ServiceName + "; исходный тип запуска сохранён");
             StatusText.Text = "ОТКЛЮЧЕНА СЛУЖБА: " + spec.ServiceName.ToUpperInvariant();
             MessageBox.Show("Служба отключена. Исходный тип запуска и состояние сохранены для отката.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
             ShowTweaks();
         }
-        catch (Exception ex) { LogAction("ERROR", "Не удалось изменить службу", spec.ServiceName + ": " + ex.Message); MessageBox.Show("Не удалось изменить службу:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex)
+        {
+            LogAction("ERROR", "Не удалось изменить службу", spec.ServiceName + ": " + ex.Message);
+            bool rollbackOk = false;
+            if (_serviceBackups.ContainsKey(id))
+            {
+                try { RestoreService(id, false); rollbackOk = !_serviceBackups.ContainsKey(id); }
+                catch (Exception rollbackError) { LogAction("ERROR", "Аварийный откат службы", spec.ServiceName + ": " + rollbackError.Message); }
+            }
+            MessageBox.Show("Не удалось изменить службу:\n" + ex.Message + (rollbackOk ? "\n\nИсходные параметры автоматически восстановлены." : "\n\nРезервная копия сохранена для повторного отката."), "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void RestoreService(string id, bool notify = true)
@@ -944,6 +1017,14 @@ public partial class MainWindow : Window
             RunChecked("sc.exe", $"config {snapshot.ServiceName} start= {mode}");
             if (snapshot.WasRunning) { try { RunChecked("sc.exe", "start " + snapshot.ServiceName); } catch { } }
             else { try { RunChecked("sc.exe", "stop " + snapshot.ServiceName); } catch { } }
+            var verifiedConfig = RunCapture("sc.exe", "qc " + snapshot.ServiceName);
+            var expectedStart = mode switch { "boot" => "BOOT_START", "system" => "SYSTEM_START", "auto" => "AUTO_START", "demand" => "DEMAND_START", "disabled" => "DISABLED", _ => "" };
+            if (!System.Text.RegularExpressions.Regex.IsMatch(verifiedConfig, @"START_TYPE\s*:\s*\d+\s+" + expectedStart, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                throw new InvalidOperationException("Windows не подтвердила восстановление типа запуска службы. Резервная копия сохранена.");
+            var verifiedState = RunCapture("sc.exe", "query " + snapshot.ServiceName);
+            bool isRunning = System.Text.RegularExpressions.Regex.IsMatch(verifiedState, @"STATE\s*:\s*\d+\s+RUNNING", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (snapshot.WasRunning != isRunning)
+                throw new InvalidOperationException("Тип запуска восстановлен, но фактическое состояние службы отличается. Резервная копия сохранена для повторной проверки.");
             _serviceBackups.Remove(id);
             SaveBackups();
             LogAction("INFO", "Восстановлена служба", snapshot.ServiceName + "; исходный тип запуска: " + snapshot.StartMode);
