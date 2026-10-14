@@ -36,8 +36,8 @@
                 </Grid>
               </Border>
               <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="NOVA" FontSize="23" FontWeight="Black" Foreground="{StaticResource TextMain}" LetterSpacing="2"/>
-                <TextBlock Text="PC PERFORMANCE LAB" FontSize="8" FontWeight="Bold" Foreground="{StaticResource Accent}" Margin="2,4,0,0" LetterSpacing="1.2"/>
+                <TextBlock Text="NOVA" FontSize="23" FontWeight="Black" Foreground="{StaticResource TextMain}"/>
+                <TextBlock Text="PC PERFORMANCE LAB" FontSize="8" FontWeight="Bold" Foreground="{StaticResource Accent}" Margin="2,4,0,0"/>
               </StackPanel>
             </StackPanel>
             <Border Background="#111D14" BorderBrush="#314B31" BorderThickness="1" CornerRadius="15" Padding="12,11" Margin="0,20,0,0">
@@ -48,7 +48,7 @@
                   <Ellipse Width="5" Height="5" Fill="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="SYSTEM STATUS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Accent}" LetterSpacing="1"/>
+                  <TextBlock Text="SYSTEM STATUS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
                   <TextBlock Text="Локальная сессия активна" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
                 </StackPanel>
               </Grid>
@@ -60,7 +60,7 @@
               <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
               <StackPanel>
                 <TextBlock Text="NOVA PC BOOST" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMain}"/>
-                <TextBlock Text="WINDOWS · X64" FontSize="8" Foreground="#718078" Margin="0,5,0,0" LetterSpacing="1"/>
+                <TextBlock Text="WINDOWS · X64" FontSize="8" Foreground="#718078" Margin="0,5,0,0"/>
               </StackPanel>
               <Border Grid.Column="1" Background="#1C2B1D" BorderBrush="#354C34" BorderThickness="1" CornerRadius="7" Padding="7,4" VerticalAlignment="Center">
                 <TextBlock Text="v1.6.0" Foreground="{StaticResource Accent}" FontSize="9" FontWeight="Bold"/>
@@ -69,19 +69,19 @@
             <TextBlock Text="Настройки хранятся локально" FontSize="9" Foreground="#718078" Margin="0,9,0,0"/>
           </StackPanel>
           <StackPanel>
-            <TextBlock Text="WORKSPACE" Foreground="#6E7C70" FontSize="9" FontWeight="Bold" Margin="8,0,0,10" LetterSpacing="1.5"/>
+            <TextBlock Text="WORKSPACE" Foreground="#6E7C70" FontSize="9" FontWeight="Bold" Margin="8,0,0,10"/>
             <Button x:Name="NavDashboard" Style="{StaticResource NavButton}" Content="▦    Панель управления" Click="Dashboard_Click"/>
             <Button x:Name="NavProfiles" Style="{StaticResource NavButton}" Content="◈    Игровые профили" Click="Profiles_Click"/>
             <Button x:Name="NavTweaks" Style="{StaticResource NavButton}" Content="⌁    Оптимизация Windows" Click="Tweaks_Click"/>
             <Button x:Name="NavTools" Style="{StaticResource NavButton}" Content="⚙    Системные инструменты" Click="Tools_Click"/>
             <Button x:Name="NavRestore" Style="{StaticResource NavButton}" Content="↶    Резервные копии и откат" Click="Restore_Click"/>
             <Border Height="1" Background="{StaticResource Line}" Margin="7,18,7,15"/>
-            <TextBlock Text="QUICK NOTES" Foreground="#6E7C70" FontSize="9" FontWeight="Bold" Margin="8,0,0,10" LetterSpacing="1.5"/>
+            <TextBlock Text="QUICK NOTES" Foreground="#6E7C70" FontSize="9" FontWeight="Bold" Margin="8,0,0,10"/>
             <Border Background="#101711" BorderBrush="#2A3A2C" BorderThickness="1" CornerRadius="13" Padding="12" Margin="0,0,0,9">
               <StackPanel>
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="01" FontSize="9" Foreground="{StaticResource Accent}" FontWeight="Bold"/>
-                  <TextBlock Text="   BACKUP FIRST" FontSize="9" Foreground="#D9E5D6" FontWeight="Bold" LetterSpacing="0.5"/>
+                  <TextBlock Text="   BACKUP FIRST" FontSize="9" Foreground="#D9E5D6" FontWeight="Bold"/>
                 </StackPanel>
                 <TextBlock Text="Сохрани исходные параметры перед изменениями." FontSize="10" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" LineHeight="15"/>
               </StackPanel>
@@ -90,7 +90,7 @@
               <StackPanel>
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="02" FontSize="9" Foreground="{StaticResource Cyan}" FontWeight="Bold"/>
-                  <TextBlock Text="   TEST ONE BY ONE" FontSize="9" Foreground="#D9E5E2" FontWeight="Bold" LetterSpacing="0.5"/>
+                  <TextBlock Text="   TEST ONE BY ONE" FontSize="9" Foreground="#D9E5E2" FontWeight="Bold"/>
                 </StackPanel>
                 <TextBlock Text="Сравнивай FPS в одинаковых условиях." FontSize="10" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" LineHeight="15"/>
               </StackPanel>
@@ -102,18 +102,18 @@
         <Grid.RowDefinitions><RowDefinition Height="76"/><RowDefinition Height="*"/><RowDefinition Height="30"/></Grid.RowDefinitions>
         <Grid Grid.Row="0" Margin="1,0,1,11">
           <StackPanel VerticalAlignment="Center">
-            <TextBlock x:Name="Breadcrumb" Text="NOVA  /  OVERVIEW" Foreground="{StaticResource Muted}" FontSize="9" FontWeight="Bold" LetterSpacing="1.4"/>
-            <TextBlock x:Name="PageTitle" Text="Твой ПК. Твои правила." FontSize="27" FontWeight="Bold" Margin="0,3,0,0" LetterSpacing="-0.5"/>
+            <TextBlock x:Name="Breadcrumb" Text="NOVA  /  OVERVIEW" Foreground="{StaticResource Muted}" FontSize="9" FontWeight="Bold"/>
+            <TextBlock x:Name="PageTitle" Text="Твой ПК. Твои правила." FontSize="27" FontWeight="Bold" Margin="0,3,0,0"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <Border Background="#101712" BorderBrush="#2C3B2D" BorderThickness="1" CornerRadius="999" Padding="12,8" Margin="0,0,9,0">
               <StackPanel Orientation="Horizontal">
                 <Ellipse Width="6" Height="6" Fill="{StaticResource Accent}" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                <TextBlock Text="LOCAL MODE" Foreground="#C3D1C1" FontSize="9" FontWeight="Bold" LetterSpacing="0.6"/>
+                <TextBlock Text="LOCAL MODE" Foreground="#C3D1C1" FontSize="9" FontWeight="Bold"/>
               </StackPanel>
             </Border>
             <Border Background="#10161B" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="999" Padding="12,8">
-              <TextBlock Text="NATIVE WINDOWS APP" Foreground="{StaticResource Muted}" FontSize="9" FontWeight="Bold" LetterSpacing="0.5"/>
+              <TextBlock Text="NATIVE WINDOWS APP" Foreground="{StaticResource Muted}" FontSize="9" FontWeight="Bold"/>
             </Border>
           </StackPanel>
         </Grid>
@@ -132,9 +132,9 @@
           <Border Height="1" Background="{StaticResource Line}" VerticalAlignment="Top"/>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
             <Ellipse Width="6" Height="6" Fill="{StaticResource Accent}" Margin="0,0,7,1"/>
-            <TextBlock x:Name="StatusText" Text="ГОТОВ К РАБОТЕ" Foreground="{StaticResource Muted}" FontSize="9" FontWeight="Bold" LetterSpacing="1"/>
+            <TextBlock x:Name="StatusText" Text="ГОТОВ К РАБОТЕ" Foreground="{StaticResource Muted}" FontSize="9" FontWeight="Bold"/>
           </StackPanel>
-          <TextBlock Text="CONTROL YOUR PC. TEST YOUR RESULTS." Foreground="#657366" FontSize="8" FontWeight="Bold" LetterSpacing="0.8" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+          <TextBlock Text="CONTROL YOUR PC. TEST YOUR RESULTS." Foreground="#657366" FontSize="8" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
         </Grid>
       </Grid>
     </Grid>
