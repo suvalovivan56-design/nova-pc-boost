@@ -1,4 +1,7 @@
 name: Build native Windows app and publish release
+concurrency:
+  group: nova-pc-boost-release
+  cancel-in-progress: false
 on:
   push:
     branches:
@@ -28,18 +31,18 @@ jobs:
       - name: Publish EXE to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.6.0' }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.7.0' }}
         shell: pwsh
         run: |
           $tag = $env:RELEASE_TAG
           $notes = @'
-          NOVA PC BOOST v1.6.0 — нативное Windows-приложение на C# / WPF, без Python.
+          NOVA PC BOOST v1.7.0 — major visual redesign, native Windows app on C# / WPF.
 
-          • Переработанный интерфейс в стиле игрового Control Center
-          • Профили CS2, Rust и Dota 2
+          • Полностью обновлённый NOVA visual system: dark surfaces, lime accents, soft glows and animated controls
+          • Обновлённый dashboard with animated NOVA core and refined system monitor cards
+          • Игровые профили CS2, Rust и Dota 2
           • Windows-твики с сохранением исходных значений и откатом
-          • Мониторинг CPU, RAM и диска
-          • Системные инструменты и безопасная очистка старых временных файлов
+          • Мониторинг CPU, RAM и диска, системные инструменты и безопасная очистка временных файлов
 
           Проверьте EXE антивирусом перед запуском.
           '@
