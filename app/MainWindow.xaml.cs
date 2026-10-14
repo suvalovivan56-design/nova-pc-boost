@@ -450,6 +450,12 @@ public partial class MainWindow : Window
         var note = new StackPanel();
         note.Children.Add(Txt("Перед тестом и после изменений используй одну и ту же сцену, разрешение, настройки, сервер и примерно одинаковую длительность. Запиши средний FPS и 1% low.", 11, MutedHex));
         PageContent.Children.Add(Card(note));
+        var benchmarkContext = new UniformGrid { Columns = 2, Margin = new Thickness(0, 0, 0, 8) };
+        var gameSelector = new ComboBox { ItemsSource = new[] { "Rust", "CS2", "Dota 2", "Другая игра" }, SelectedIndex = 0, Margin = new Thickness(0, 4, 10, 8), Padding = new Thickness(8), Background = Brush("#0A100C"), Foreground = Brush(TextHex), BorderBrush = Brush(LineHex), FontSize = 12 };
+        var scenarioInput = MetricInput("Например: одна карта, одинаковые настройки, 3 минуты");
+        benchmarkContext.Children.Add(MetricPanel("ИГРА", gameSelector));
+        benchmarkContext.Children.Add(MetricPanel("СЦЕНА / УСЛОВИЯ ТЕСТА", scenarioInput));
+        PageContent.Children.Add(benchmarkContext);
         var metricGrid = new UniformGrid { Columns = 4, Margin = new Thickness(0, 0, 0, 8) };
         var fpsBefore = MetricInput("Средний FPS ДО");
         var lowBefore = MetricInput("1% low ДО");
@@ -460,7 +466,7 @@ public partial class MainWindow : Window
         metricGrid.Children.Add(MetricPanel("Средний FPS ПОСЛЕ", fpsAfter));
         metricGrid.Children.Add(MetricPanel("1% low ПОСЛЕ", lowAfter));
         PageContent.Children.Add(metricGrid);
-        PageContent.Children.Add(Btn("Сохранить и сравнить замеры", (_, _) => SaveBenchmark(fpsBefore.Text, lowBefore.Text, fpsAfter.Text, lowAfter.Text)));
+        PageContent.Children.Add(Btn("Сохранить и сравнить замеры", (_, _) => SaveBenchmark(gameSelector.SelectedItem?.ToString() ?? "Другая игра", scenarioInput.Text, fpsBefore.Text, lowBefore.Text, fpsAfter.Text, lowAfter.Text)));
         PageContent.Children.Add(Btn("Открыть результаты benchmark", (_, _) => OpenLocalFile(_benchmarkPath), false));
 
         AddSection("04 / LOCAL ACTION LOG", "Журнал действий", "Последние действия и ошибки приложения. Журнал хранится только на этом компьютере.");
@@ -576,7 +582,7 @@ public partial class MainWindow : Window
         return p;
     }
 
-    private void SaveBenchmark(string fpsBeforeText, string lowBeforeText, string fpsAfterText, string lowAfterText)
+    private void SaveBenchmark(string game, string scenario, string fpsBeforeText, string lowBeforeText, string fpsAfterText, string lowAfterText)
     {
         if (!TryMetric(fpsBeforeText, out var fpsBefore) || !TryMetric(lowBeforeText, out var lowBefore) ||
             !TryMetric(fpsAfterText, out var fpsAfter) || !TryMetric(lowAfterText, out var lowAfter) ||
@@ -588,7 +594,7 @@ public partial class MainWindow : Window
         }
         var record = new BenchmarkRecord
         {
-            Date = DateTimeOffset.Now, FpsBefore = fpsBefore, LowBefore = lowBefore, FpsAfter = fpsAfter, LowAfter = lowAfter,
+            Date = DateTimeOffset.Now, Game = game, Scenario = (scenario ?? "").Trim(), FpsBefore = fpsBefore, LowBefore = lowBefore, FpsAfter = fpsAfter, LowAfter = lowAfter,
             AverageFpsDeltaPercent = (fpsAfter - fpsBefore) / fpsBefore * 100d,
             LowDeltaPercent = lowBefore <= 0 ? 0 : (lowAfter - lowBefore) / lowBefore * 100d
         };
@@ -609,7 +615,7 @@ public partial class MainWindow : Window
             var temp = _benchmarkPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try { File.WriteAllText(temp, JsonSerializer.Serialize(records, new JsonSerializerOptions { WriteIndented = true })); File.Move(temp, _benchmarkPath, true); }
             finally { try { if (File.Exists(temp)) File.Delete(temp); } catch { } }
-            var resultText = $"Средний FPS: {fpsBefore:0.##} → {fpsAfter:0.##} ({record.AverageFpsDeltaPercent:+0.0;-0.0;0.0}%)\n1% low: {lowBefore:0.##} → {lowAfter:0.##} ({(lowBefore <= 0 ? "нет базы" : record.LowDeltaPercent.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture) + "%")})";
+            var resultText = $"Игра: {record.Game}\nУсловия: {(string.IsNullOrWhiteSpace(record.Scenario) ? "не указаны" : record.Scenario)}\nСредний FPS: {fpsBefore:0.##} → {fpsAfter:0.##} ({record.AverageFpsDeltaPercent:+0.0;-0.0;0.0}%)\n1% low: {lowBefore:0.##} → {lowAfter:0.##} ({(lowBefore <= 0 ? "нет базы" : record.LowDeltaPercent.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture) + "%")})";
             LogAction("INFO", "Сохранён benchmark", resultText.Replace("\n", "; "));
             MessageBox.Show(resultText + "\n\nЗамер сохранён локально. Результат достоверен только при сопоставимых условиях тестирования.", "NOVA PC BOOST — результат", MessageBoxButton.OK, MessageBoxImage.Information);
             ShowDiagnostics();
@@ -626,6 +632,8 @@ public partial class MainWindow : Window
 
     private sealed class BenchmarkRecord
     {
+        public string Game { get; set; } = "Другая игра";
+        public string Scenario { get; set; } = "";
         public DateTimeOffset Date { get; set; }
         public double FpsBefore { get; set; }
         public double LowBefore { get; set; }
