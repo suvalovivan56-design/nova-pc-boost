@@ -724,7 +724,7 @@ public partial class MainWindow : Window
 
     private void LoadBackups()
     {
-        _regBackups.Clear(); _powerBackups.Clear();
+        _regBackups.Clear(); _powerBackups.Clear(); _serviceBackups.Clear();
         try
         {
             if (!File.Exists(_statePath)) return;
