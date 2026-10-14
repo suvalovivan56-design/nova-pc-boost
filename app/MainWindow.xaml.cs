@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace NovaPCBoost;
@@ -81,6 +82,17 @@ public partial class MainWindow : Window
         Breadcrumb.Text = crumb;
         PageTitle.Text = title;
         PageContent.Children.Clear();
+        PageContent.Opacity = 0;
+        var pageShift = new TranslateTransform(0, 12);
+        PageContent.RenderTransform = pageShift;
+        PageContent.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(280))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+        pageShift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(320))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
         NavDashboard.Background = Brush("#0B1017"); NavDashboard.Foreground = Brush(MutedHex);
         NavProfiles.Background = Brush("#0B1017"); NavProfiles.Foreground = Brush(MutedHex);
         NavTweaks.Background = Brush("#0B1017"); NavTweaks.Foreground = Brush(MutedHex);
