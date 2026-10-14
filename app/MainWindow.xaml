@@ -18,7 +18,7 @@
               <TextBlock Text="PC OPTIMIZER" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Accent}" Margin="1,0,0,0"/>
             </StackPanel>
           </StackPanel>
-          <Border Background="#121D17" BorderBrush="#263D2B" BorderThickness="1" CornerRadius="8" Padding="11,10" Margin="0,19,0,0">
+          <Border Background="#121D17" BorderBrush="#263D2B" BorderThickness="1" CornerRadius="15" Padding="11,10" Margin="0,19,0,0">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
               <Ellipse Width="7" Height="7" Fill="{StaticResource Accent}" VerticalAlignment="Center" HorizontalAlignment="Left"/>
@@ -66,7 +66,7 @@
           <TextBlock x:Name="Breadcrumb" Text="NOVA  /  ПАНЕЛЬ" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="Bold"/>
           <TextBlock x:Name="PageTitle" Text="Состояние системы" FontSize="25" FontWeight="Bold" Margin="0,4,0,0"/>
         </StackPanel>
-        <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="9" Padding="13,9">
+        <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="16" Padding="13,9">
           <StackPanel Orientation="Horizontal">
             <Ellipse Width="7" Height="7" Fill="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <TextBlock Text="NATIVE WINDOWS APP" Foreground="{StaticResource Muted}" FontSize="9" FontWeight="Bold"/>
@@ -76,7 +76,7 @@
           </StackPanel>
         </Border>
       </Grid>
-      <Border Grid.Row="1" Background="#090E14" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="13" Padding="18,16">
+      <Border Grid.Row="1" Background="#090E14" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="20" Padding="18,16">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel x:Name="PageContent" Margin="0,0,5,12"/>
         </ScrollViewer>
