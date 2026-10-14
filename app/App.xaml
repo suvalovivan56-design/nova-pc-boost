@@ -32,11 +32,16 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}" BorderBrush="#263543" BorderThickness="1">
+            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="16" Padding="{TemplateBinding Padding}" BorderBrush="#263543" BorderThickness="1" RenderTransformOrigin="0.5,0.5"><Border.RenderTransform><ScaleTransform x:Name="buttonScale" ScaleX="1" ScaleY="1"/></Border.RenderTransform><Border.Effect><DropShadowEffect x:Name="buttonShadow" Color="#B8FF57" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>>
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="border" Property="Opacity" Value="0.84"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                <Setter TargetName="border" Property="Effect"><Setter.Value><DropShadowEffect Color="#B8FF57" BlurRadius="16" ShadowDepth="0" Opacity="0.20"/></Setter.Value></Setter>
+                <Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:0.14"/><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:0.14"/></Storyboard></BeginStoryboard></Trigger.EnterActions>
+                <Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.16"/><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.16"/></Storyboard></BeginStoryboard></Trigger.ExitActions>
+              </Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter TargetName="border" Property="Opacity" Value="0.42"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -47,8 +52,8 @@
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="Background" Value="{StaticResource Side}"/>
       <Setter Property="Foreground" Value="{StaticResource Muted}"/>
-      <Setter Property="Padding" Value="14,12"/>
-      <Setter Property="Margin" Value="0,3,0,3"/>
+      <Setter Property="Padding" Value="16,13"/>
+      <Setter Property="Margin" Value="0,4,0,4"/>
       <Setter Property="FontSize" Value="12"/>
     </Style>
   </Application.Resources>
