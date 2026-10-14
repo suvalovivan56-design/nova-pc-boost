@@ -35,6 +35,11 @@ public partial class MainWindow : Window
         ["game_mode"] = ("Игровой режим Windows", "WINDOWS", "Включает Game Mode для текущего пользователя. Прирост зависит от конкретной системы.", "Меняется только профиль текущего пользователя; исходные значения сохраняются для отката."),
         ["capture"] = ("Отключить фоновую запись Xbox", "BACKGROUND", "Отключает фоновые игровые захваты, если они не нужны.", "Применяй, только если не пользуешься фоновыми клипами Xbox."),
         ["visuals"] = ("Уменьшить анимации Windows", "INTERFACE", "Выбирает базовый режим визуальных эффектов оболочки Windows.", "Может измениться внешний вид и анимации интерфейса."),
+        ["tailored"] = ("Отключить персонализированные советы", "PRIVACY", "Отключает использование диагностических данных для персонализированных советов и рекомендаций текущего пользователя.", "Некоторые советы и рекомендации Windows могут стать менее персонализированными."),
+        ["ads_id"] = ("Отключить рекламный идентификатор", "PRIVACY", "Отключает рекламный ID Windows для текущего пользователя.", "Не отключает рекламу во всех приложениях и сайтах."),
+        ["feedback"] = ("Уменьшить запросы обратной связи", "PRIVACY", "Снижает частоту системных запросов отправить отзыв.", "Не отключает обязательные диагностические данные."),
+        ["typing"] = ("Отключить персонализацию ввода", "PRIVACY", "Отключает сбор данных об улучшении рукописного ввода и печати для текущего пользователя.", "Может снизить персонализацию функций ввода."),
+        ["activity"] = ("Отключить историю активности", "PRIVACY", "Отключает публикацию активности пользователя в истории Windows для текущего пользователя.", "Функции, зависящие от истории активности, могут быть ограничены."),
         ["power"] = ("Высокая производительность", "POWER", "Переключает план питания Windows, если он доступен.", "На ноутбуке увеличится расход батареи и может вырасти нагрев.")
     };
     private readonly Dictionary<string, List<RegSnapshot>> _regBackups = new();
@@ -432,6 +437,11 @@ public partial class MainWindow : Window
         "game_mode" => new() { (Registry.CurrentUser, @"Software\Microsoft\GameBar", "AutoGameModeEnabled", 1), (Registry.CurrentUser, @"Software\Microsoft\GameBar", "AllowAutoGameMode", 1) },
         "capture" => new() { (Registry.CurrentUser, @"System\GameConfigStore", "GameDVR_Enabled", 0), (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\GameDVR", "AppCaptureEnabled", 0) },
         "visuals" => new() { (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects", "VisualFXSetting", 2) },
+        "tailored" => new() { (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Privacy", "TailoredExperiencesWithDiagnosticDataEnabled", 0) },
+        "ads_id" => new() { (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo", "Enabled", 0) },
+        "feedback" => new() { (Registry.CurrentUser, @"Software\Microsoft\Siuf\Rules", "NumberOfSIUFInPeriod", 0) },
+        "typing" => new() { (Registry.CurrentUser, @"Software\Microsoft\InputPersonalization", "RestrictImplicitInkCollection", 1), (Registry.CurrentUser, @"Software\Microsoft\InputPersonalization", "RestrictImplicitTextCollection", 1) },
+        "activity" => new() { (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Policies\System", "PublishUserActivities", 0), (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Policies\System", "UploadUserActivities", 0) },
         _ => new()
     };
 
