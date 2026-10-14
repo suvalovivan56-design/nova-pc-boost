@@ -63,7 +63,7 @@
                 <TextBlock Text="WINDOWS · X64" FontSize="8" Foreground="#718078" Margin="0,5,0,0"/>
               </StackPanel>
               <Border Grid.Column="1" Background="#1C2B1D" BorderBrush="#354C34" BorderThickness="1" CornerRadius="7" Padding="7,4" VerticalAlignment="Center">
-                <TextBlock Text="v1.6.0" Foreground="{StaticResource Accent}" FontSize="9" FontWeight="Bold"/>
+                <TextBlock Text="v1.7.0" Foreground="{StaticResource Accent}" FontSize="9" FontWeight="Bold"/>
               </Border>
             </Grid>
             <TextBlock Text="Настройки хранятся локально" FontSize="9" Foreground="#718078" Margin="0,9,0,0"/>
