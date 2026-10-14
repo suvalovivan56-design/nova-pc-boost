@@ -3,15 +3,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
-    <Color x:Key="BgColor">#080B10</Color>
-    <Color x:Key="SideColor">#0B1017</Color>
-    <Color x:Key="PanelColor">#111923</Color>
-    <Color x:Key="PanelAltColor">#151F2A</Color>
-    <Color x:Key="LineColor">#263543</Color>
-    <Color x:Key="AccentColor">#B8FF57</Color>
-    <Color x:Key="CyanColor">#58D9FF</Color>
-    <Color x:Key="TextColor">#F5F7FA</Color>
-    <Color x:Key="MutedColor">#A7B1BD</Color>
+    <Color x:Key="BgColor">#080B0D</Color>
+    <Color x:Key="SideColor">#0B100C</Color>
+    <Color x:Key="PanelColor">#111812</Color>
+    <Color x:Key="PanelAltColor">#182119</Color>
+    <Color x:Key="LineColor">#29382B</Color>
+    <Color x:Key="AccentColor">#BCFF5B</Color>
+    <Color x:Key="CyanColor">#8DFFCB</Color>
+    <Color x:Key="TextColor">#F4F7F1</Color>
+    <Color x:Key="MutedColor">#A2AEA0</Color>
     <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
     <SolidColorBrush x:Key="Side" Color="{StaticResource SideColor}"/>
     <SolidColorBrush x:Key="Panel" Color="{StaticResource PanelColor}"/>
@@ -21,40 +21,113 @@
     <SolidColorBrush x:Key="Cyan" Color="{StaticResource CyanColor}"/>
     <SolidColorBrush x:Key="TextMain" Color="{StaticResource TextColor}"/>
     <SolidColorBrush x:Key="Muted" Color="{StaticResource MutedColor}"/>
-    <Style TargetType="Button">
+
+    <Style TargetType="{x:Type Button}">
       <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
       <Setter Property="Background" Value="{StaticResource PanelAlt}"/>
       <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="15,10"/>
+      <Setter Property="Padding" Value="15,11"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Template">
         <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="16" Padding="{TemplateBinding Padding}" BorderBrush="#263543" BorderThickness="1" RenderTransformOrigin="0.5,0.5"><Border.RenderTransform><ScaleTransform x:Name="buttonScale" ScaleX="1" ScaleY="1"/></Border.RenderTransform><Border.Effect><DropShadowEffect x:Name="buttonShadow" Color="#B8FF57" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>
-              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+          <ControlTemplate TargetType="{x:Type Button}">
+            <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="#334336"
+                    BorderThickness="1" CornerRadius="13" Padding="{TemplateBinding Padding}"
+                    RenderTransformOrigin="0.5,0.5">
+              <Border.RenderTransform>
+                <ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1"/>
+              </Border.RenderTransform>
+              <Border.Effect>
+                <DropShadowEffect Color="#BCFF5B" BlurRadius="0" ShadowDepth="0" Opacity="0"/>
+              </Border.Effect>
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                RecognizesAccessKey="True"/>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Accent}"/>
-                <Setter TargetName="border" Property="Effect"><Setter.Value><DropShadowEffect Color="#B8FF57" BlurRadius="16" ShadowDepth="0" Opacity="0.20"/></Setter.Value></Setter>
-                <Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:0.14"/><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:0.14"/></Storyboard></BeginStoryboard></Trigger.EnterActions>
-                <Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.16"/><DoubleAnimation Storyboard.TargetName="buttonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.16"/></Storyboard></BeginStoryboard></Trigger.ExitActions>
+                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                <Setter TargetName="ButtonSurface" Property="Effect">
+                  <Setter.Value><DropShadowEffect Color="#BCFF5B" BlurRadius="18" ShadowDepth="0" Opacity="0.16"/></Setter.Value>
+                </Setter>
+                <Trigger.EnterActions>
+                  <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:0.14">
+                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                      </DoubleAnimation>
+                      <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:0.14">
+                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                      </DoubleAnimation>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.17"/>
+                      <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.17"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.ExitActions>
               </Trigger>
-              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="border" Property="Opacity" Value="0.42"/></Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.82"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.38"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="{StaticResource Cyan}"/>
+              </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
     </Style>
-    <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+
+    <Style x:Key="NavButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="Background" Value="{StaticResource Side}"/>
       <Setter Property="Foreground" Value="{StaticResource Muted}"/>
-      <Setter Property="Padding" Value="16,13"/>
-      <Setter Property="Margin" Value="0,4,0,4"/>
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Padding" Value="14,12"/>
+      <Setter Property="Margin" Value="0,3,0,3"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type Button}">
+            <Border x:Name="NavSurface" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1"
+                    CornerRadius="12" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+              <Border.RenderTransform><TranslateTransform X="0"/></Border.RenderTransform>
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="NavSurface" Property="Background" Value="#142017"/>
+                <Setter TargetName="NavSurface" Property="BorderBrush" Value="#2C4229"/>
+                <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
+                <Trigger.EnterActions>
+                  <BeginStoryboard>
+                    <Storyboard><DoubleAnimation Storyboard.TargetName="NavSurface" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="3" Duration="0:0:0.12"/></Storyboard>
+                  </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard>
+                    <Storyboard><DoubleAnimation Storyboard.TargetName="NavSurface" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.12"/></Storyboard>
+                  </BeginStoryboard>
+                </Trigger.ExitActions>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="NavSurface" Property="Opacity" Value="0.78"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="NavSurface" Property="Opacity" Value="0.4"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
   </Application.Resources>
 </Application>
