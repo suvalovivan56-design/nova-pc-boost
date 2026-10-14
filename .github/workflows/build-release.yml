@@ -31,12 +31,12 @@ jobs:
       - name: Publish EXE to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.7.0' }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.8.0' }}
         shell: pwsh
         run: |
           $tag = $env:RELEASE_TAG
           $notes = @'
-          NOVA PC BOOST v1.7.0 — major visual redesign, native Windows app on C# / WPF.
+          NOVA PC BOOST v1.8.0 — major visual redesign, native Windows app on C# / WPF.
 
           • Полностью обновлённый NOVA visual system: dark surfaces, lime accents, soft glows and animated controls
           • Обновлённый dashboard with animated NOVA core and refined system monitor cards
