@@ -32,7 +32,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="16" Padding="{TemplateBinding Padding}" BorderBrush="#263543" BorderThickness="1" RenderTransformOrigin="0.5,0.5"><Border.RenderTransform><ScaleTransform x:Name="buttonScale" ScaleX="1" ScaleY="1"/></Border.RenderTransform><Border.Effect><DropShadowEffect x:Name="buttonShadow" Color="#B8FF57" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>>
+            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="16" Padding="{TemplateBinding Padding}" BorderBrush="#263543" BorderThickness="1" RenderTransformOrigin="0.5,0.5"><Border.RenderTransform><ScaleTransform x:Name="buttonScale" ScaleX="1" ScaleY="1"/></Border.RenderTransform><Border.Effect><DropShadowEffect x:Name="buttonShadow" Color="#B8FF57" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
             </Border>
             <ControlTemplate.Triggers>
