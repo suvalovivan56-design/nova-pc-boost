@@ -8,7 +8,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 
 namespace NovaPCBoost;
@@ -147,13 +146,13 @@ public partial class MainWindow : Window
         actions.Children.Add(Btn("Игровые профили", (_, _) => ShowProfiles(), false));
         left.Children.Add(actions);
         var right = new Grid { Width = 230, Height = 184, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        var outerRing = new Ellipse { Width = 158, Height = 158, Stroke = Brush("#47633A"), StrokeThickness = 1, Opacity = 0.72, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        var innerRing = new Ellipse { Width = 124, Height = 124, Stroke = Brush(AccentHex), StrokeThickness = 1, Opacity = 0.22, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        var orbitRing = new Ellipse { Width = 174, Height = 66, Stroke = Brush(CyanHex), StrokeThickness = 1, Opacity = 0.55, StrokeDashArray = new DoubleCollection { 2, 3 }, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, RenderTransformOrigin = new Point(0.5, 0.5) };
+        var outerRing = new System.Windows.Shapes.Ellipse { Width = 158, Height = 158, Stroke = Brush("#47633A"), StrokeThickness = 1, Opacity = 0.72, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var innerRing = new System.Windows.Shapes.Ellipse { Width = 124, Height = 124, Stroke = Brush(AccentHex), StrokeThickness = 1, Opacity = 0.22, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var orbitRing = new System.Windows.Shapes.Ellipse { Width = 174, Height = 66, Stroke = Brush(CyanHex), StrokeThickness = 1, Opacity = 0.55, StrokeDashArray = new DoubleCollection { 2, 3 }, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, RenderTransformOrigin = new Point(0.5, 0.5) };
         var orbitRotation = new RotateTransform(-26);
         orbitRing.RenderTransform = orbitRotation;
         orbitRing.Loaded += (_, _) => orbitRotation.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(-26, 334, TimeSpan.FromSeconds(24)) { RepeatBehavior = RepeatBehavior.Forever });
-        var coreGlow = new Ellipse { Width = 91, Height = 91, Fill = Brush("#19301A"), Stroke = Brush("#527941"), StrokeThickness = 1, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var coreGlow = new System.Windows.Shapes.Ellipse { Width = 91, Height = 91, Fill = Brush("#19301A"), Stroke = Brush("#527941"), StrokeThickness = 1, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         var coreLetter = Txt("N", 64, AccentHex, true);
         coreLetter.HorizontalAlignment = HorizontalAlignment.Center;
         coreLetter.VerticalAlignment = VerticalAlignment.Center;
