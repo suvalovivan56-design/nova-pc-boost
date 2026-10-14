@@ -63,7 +63,7 @@
                 <TextBlock Text="WINDOWS · X64" FontSize="8" Foreground="#718078" Margin="0,5,0,0"/>
               </StackPanel>
               <Border Grid.Column="1" Background="#1C2B1D" BorderBrush="#354C34" BorderThickness="1" CornerRadius="7" Padding="7,4" VerticalAlignment="Center">
-                <TextBlock Text="v1.8.0" Foreground="{StaticResource Accent}" FontSize="9" FontWeight="Bold"/>
+                <TextBlock Text="v1.9.0" Foreground="{StaticResource Accent}" FontSize="9" FontWeight="Bold"/>
               </Border>
             </Grid>
             <TextBlock Text="Настройки хранятся локально" FontSize="9" Foreground="#718078" Margin="0,9,0,0"/>
@@ -74,6 +74,7 @@
             <Button x:Name="NavProfiles" Style="{StaticResource NavButton}" Content="◈    Игровые профили" Click="Profiles_Click"/>
             <Button x:Name="NavTweaks" Style="{StaticResource NavButton}" Content="⌁    Оптимизация Windows" Click="Tweaks_Click"/>
             <Button x:Name="NavTools" Style="{StaticResource NavButton}" Content="⚙    Системные инструменты" Click="Tools_Click"/>
+            <Button x:Name="NavDiagnostics" Style="{StaticResource NavButton}" Content="◉    Диагностика и FPS" Click="Diagnostics_Click"/>
             <Button x:Name="NavRestore" Style="{StaticResource NavButton}" Content="↶    Резервные копии и откат" Click="Restore_Click"/>
             <Border Height="1" Background="{StaticResource Line}" Margin="7,18,7,15"/>
             <TextBlock Text="QUICK NOTES" Foreground="#6E7C70" FontSize="9" FontWeight="Bold" Margin="8,0,0,10"/>

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -22,7 +23,11 @@ public partial class MainWindow : Window
     private const string MutedHex = "#A2AEA0";
     private const string TextHex = "#F4F7F1";
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(2) };
-    private readonly string _statePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NOVA_PC_BOOST", "restore_state.json");
+    private static readonly string DataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NOVA_PC_BOOST");
+    private readonly string _statePath = Path.Combine(DataDirectory, "restore_state.json");
+    private readonly string _logPath = Path.Combine(DataDirectory, "actions.log");
+    private readonly string _benchmarkPath = Path.Combine(DataDirectory, "benchmark_results.json");
+    private string? _backupLoadError;
     private readonly Dictionary<string, JsonElement> _backup = new();
     private readonly Dictionary<string, (string Title, string Description, string Color, string[] Steps)> _games = new()
     {
@@ -126,6 +131,7 @@ public partial class MainWindow : Window
         _timer.Tick += (_, _) => UpdateStats();
         _timer.Start();
         Loaded += (_, _) => HandleElevatedServiceCommand();
+        LogAction("INFO", "Запуск приложения", $"Версия {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}; Windows {Environment.OSVersion.Version}");
     }
 
     private static Brush Brush(string hex) => new BrushConverter().ConvertFromString(hex) as Brush ?? Brushes.White;
@@ -194,6 +200,7 @@ public partial class MainWindow : Window
         NavProfiles.Background = Brush("#0B100C"); NavProfiles.Foreground = Brush(MutedHex);
         NavTweaks.Background = Brush("#0B100C"); NavTweaks.Foreground = Brush(MutedHex);
         NavTools.Background = Brush("#0B100C"); NavTools.Foreground = Brush(MutedHex);
+        NavDiagnostics.Background = Brush("#0B100C"); NavDiagnostics.Foreground = Brush(MutedHex);
         NavRestore.Background = Brush("#0B100C"); NavRestore.Foreground = Brush(MutedHex);
     }
     private void ActiveNav(Button button) { button.Background = Brush("#19251B"); button.Foreground = Brush(AccentHex); }
@@ -201,6 +208,7 @@ public partial class MainWindow : Window
     private void Profiles_Click(object sender, RoutedEventArgs e) => ShowProfiles();
     private void Tweaks_Click(object sender, RoutedEventArgs e) => ShowTweaks();
     private void Tools_Click(object sender, RoutedEventArgs e) => ShowTools();
+    private void Diagnostics_Click(object sender, RoutedEventArgs e) => ShowDiagnostics();
     private void Restore_Click(object sender, RoutedEventArgs e) => ShowRestore();
 
     private void ShowDashboard()
@@ -376,7 +384,7 @@ public partial class MainWindow : Window
         {
             if (MessageBox.Show($"Для {game} включить Game Mode и отключить фоновую запись Xbox? Исходные параметры сохранятся для отката.", "NOVA PC BOOST", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                ApplyTweak("game_mode"); ApplyTweak("capture");
+                ApplyTweak("game_mode", true); ApplyTweak("capture", true);
             }
         }));
         PageContent.Children.Add(Btn("← Все профили", (_, _) => ShowProfiles(), false));
@@ -397,6 +405,7 @@ public partial class MainWindow : Window
             p.Children.Add(Txt(spec.Title, 15, TextHex, true));
             p.Children.Add(Txt(spec.Category + "  •  " + spec.Description, 11, MutedHex));
             p.Children.Add(Txt("ВНИМАНИЕ: " + spec.Warning, 10, "#FFCB70"));
+            p.Children.Add(Txt("Профиль риска: " + (spec.Category == "PRIVACY" || spec.Category == "INTERFACE" || spec.Category == "EXPLORER" ? "приватность/интерфейс — прирост FPS не ожидается" : spec.Category == "POWER" || spec.Category == "BACKGROUND" || spec.Category == "WINDOWS" ? "эффект зависит от системы; проверь замерами" : "изменение системного поведения"), 10, CyanHex));
             var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
             actions.Children.Add(Btn("Применить", (_, _) => ApplyTweak(id)));
             actions.Children.Add(Btn("Откатить", (_, _) => RestoreTweak(id), false));
@@ -417,6 +426,229 @@ public partial class MainWindow : Window
             p.Children.Add(actions);
             PageContent.Children.Add(Card(p));
         }
+    }
+
+    private void ShowDiagnostics()
+    {
+        SetPage("NOVA  /  DIAGNOSTICS", "Измеряй. Проверяй. Сравнивай.");
+        ActiveNav(NavDiagnostics);
+        AddSection("01 / SYSTEM DIAGNOSTICS", "Диагностика компьютера", "Локальная проверка Windows и оборудования. Данные не отправляются в интернет.");
+        var facts = ReadSystemFacts();
+        var factPanel = new StackPanel();
+        foreach (var line in facts.Lines) factPanel.Children.Add(Txt(line, 12, TextHex));
+        PageContent.Children.Add(Card(factPanel));
+        AddSection("02 / ACTIONABLE FINDINGS", "Что стоит проверить", "Рекомендации основаны на доступных показателях, а не на обещании автоматического прироста FPS.");
+        var findings = new StackPanel();
+        foreach (var finding in facts.Findings)
+            findings.Children.Add(Txt((finding.Warning ? "⚠  " : "✓  ") + finding.Text, 12, finding.Warning ? "#FFCB70" : CyanHex));
+        PageContent.Children.Add(Card(findings));
+        PageContent.Children.Add(Btn("Обновить диагностику", (_, _) => ShowDiagnostics(), false));
+
+        AddSection("03 / FPS BENCHMARK", "Сравнение производительности", "Введи реальные замеры из игры или внешнего FPS-оверлея. NOVA не подменяет их оценкой CPU/RAM.");
+        var note = new StackPanel();
+        note.Children.Add(Txt("Перед тестом и после изменений используй одну и ту же сцену, разрешение, настройки, сервер и примерно одинаковую длительность. Запиши средний FPS и 1% low.", 11, MutedHex));
+        PageContent.Children.Add(Card(note));
+        var metricGrid = new UniformGrid { Columns = 4, Margin = new Thickness(0, 0, 0, 8) };
+        var fpsBefore = MetricInput("Средний FPS ДО");
+        var lowBefore = MetricInput("1% low ДО");
+        var fpsAfter = MetricInput("Средний FPS ПОСЛЕ");
+        var lowAfter = MetricInput("1% low ПОСЛЕ");
+        metricGrid.Children.Add(MetricPanel("Средний FPS ДО", fpsBefore));
+        metricGrid.Children.Add(MetricPanel("1% low ДО", lowBefore));
+        metricGrid.Children.Add(MetricPanel("Средний FPS ПОСЛЕ", fpsAfter));
+        metricGrid.Children.Add(MetricPanel("1% low ПОСЛЕ", lowAfter));
+        PageContent.Children.Add(metricGrid);
+        PageContent.Children.Add(Btn("Сохранить и сравнить замеры", (_, _) => SaveBenchmark(fpsBefore.Text, lowBefore.Text, fpsAfter.Text, lowAfter.Text)));
+        PageContent.Children.Add(Btn("Открыть результаты benchmark", (_, _) => OpenLocalFile(_benchmarkPath), false));
+
+        AddSection("04 / LOCAL ACTION LOG", "Журнал действий", "Последние действия и ошибки приложения. Журнал хранится только на этом компьютере.");
+        var logActions = new WrapPanel();
+        logActions.Children.Add(Btn("Обновить журнал", (_, _) => ShowDiagnostics(), false));
+        logActions.Children.Add(Btn("Открыть полный журнал", (_, _) => OpenLocalFile(_logPath), false));
+        PageContent.Children.Add(logActions);
+        var logPanel = new StackPanel();
+        string[] lines;
+        try { lines = File.Exists(_logPath) ? File.ReadAllLines(_logPath).TakeLast(25).Reverse().ToArray() : Array.Empty<string>(); }
+        catch (Exception ex) { lines = new[] { "Не удалось прочитать журнал: " + ex.Message }; }
+        if (lines.Length == 0) logPanel.Children.Add(Txt("Журнал пока пуст.", 11, MutedHex));
+        foreach (var line in lines) logPanel.Children.Add(Txt(line, 10, line.Contains("[ERROR]", StringComparison.Ordinal) ? "#FF9A67" : MutedHex));
+        PageContent.Children.Add(Card(logPanel));
+    }
+
+    private sealed class SystemFacts
+    {
+        public List<string> Lines { get; } = new();
+        public List<(bool Warning, string Text)> Findings { get; } = new();
+    }
+
+    private SystemFacts ReadSystemFacts()
+    {
+        var result = new SystemFacts();
+        string osName = Environment.OSVersion.ToString();
+        string displayVersion = "не определена", build = "не определена", edition = "не определена";
+        try
+        {
+            using var os = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+            osName = Convert.ToString(os?.GetValue("ProductName")) ?? osName;
+            displayVersion = Convert.ToString(os?.GetValue("DisplayVersion")) ?? displayVersion;
+            build = Convert.ToString(os?.GetValue("CurrentBuildNumber")) ?? build;
+            edition = Convert.ToString(os?.GetValue("EditionID")) ?? edition;
+        }
+        catch (Exception ex) { LogAction("WARN", "Чтение версии Windows", ex.Message); }
+        string cpuName = "не определён";
+        try
+        {
+            using var cpu = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+            cpuName = Convert.ToString(cpu?.GetValue("ProcessorNameString"))?.Trim() ?? cpuName;
+        }
+        catch (Exception ex) { LogAction("WARN", "Чтение названия CPU", ex.Message); }
+        var mem = new MemoryStatus { Length = (uint)Marshal.SizeOf<MemoryStatus>() };
+        bool memoryRead = GlobalMemoryStatusEx(ref mem);
+        double ramGb = memoryRead ? mem.TotalPhys / 1073741824d : 0;
+        double ramUsed = memoryRead && mem.TotalPhys > 0 ? (double)(mem.TotalPhys - mem.AvailPhys) / mem.TotalPhys * 100 : 0;
+        string gpuName = ReadGpuNames();
+        DriveInfo? drive = null;
+        try { drive = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\"); } catch { }
+        double freeGb = drive is { IsReady: true } ? drive.AvailableFreeSpace / 1073741824d : 0;
+        double freePct = drive is { IsReady: true, TotalSize: > 0 } ? drive.AvailableFreeSpace * 100d / drive.TotalSize : 0;
+        string powerPlan = "не удалось определить";
+        try { powerPlan = RunCapture("powercfg", "/getactivescheme").Trim().Replace("\r", " ").Replace("\n", " "); } catch (Exception ex) { LogAction("WARN", "Чтение плана питания", ex.Message); }
+        string appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "не определена";
+        result.Lines.Add("Windows: " + osName + " / " + displayVersion + " / сборка " + build + " / редакция " + edition);
+        result.Lines.Add("Процессор: " + cpuName);
+        result.Lines.Add("Видеокарта(и): " + (string.IsNullOrWhiteSpace(gpuName) ? "не удалось определить через реестр устройств" : gpuName));
+        result.Lines.Add($"Оперативная память: {ramGb:0.0} ГБ всего; занято {ramUsed:0}%");
+        result.Lines.Add(drive is { IsReady: true } ? $"Системный диск: свободно {freeGb:0.0} ГБ ({freePct:0}%); занято {100 - freePct:0}%" : "Системный диск: недоступен");
+        result.Lines.Add("План питания: " + powerPlan);
+        result.Lines.Add("Права администратора: " + (IsAdministrator() ? "да" : "нет"));
+        result.Lines.Add($"Сборка NOVA: {appVersion}; ОС 64-bit: {Environment.Is64BitOperatingSystem}; процесс 64-bit: {Environment.Is64BitProcess}");
+        if (!memoryRead) result.Findings.Add((true, "Не удалось прочитать статистику памяти — проверь права и состояние Windows."));
+        else if (ramGb < 16) result.Findings.Add((true, $"Установлено около {ramGb:0} ГБ RAM. Для некоторых современных игр 16 ГБ или больше могут дать запас; это не гарантирует повышение FPS."));
+        else result.Findings.Add((false, $"Объём RAM: {ramGb:0} ГБ. Следи за фактической занятостью во время игры ({ramUsed:0}% сейчас)."));
+        if (drive is not { IsReady: true }) result.Findings.Add((true, "Системный диск не удалось проверить."));
+        else if (freeGb < 15 || freePct < 10) result.Findings.Add((true, $"На системном диске мало места ({freeGb:0.0} ГБ свободно). Освободи место, но не удаляй неизвестные системные файлы вручную."));
+        else result.Findings.Add((false, $"Запас места на системном диске выглядит приемлемо ({freeGb:0.0} ГБ свободно)."));
+        result.Findings.Add((false, "Для достоверного сравнения производительности зафиксируй средний FPS и 1% low до/после в одинаковом игровом сценарии."));
+        result.Findings.Add((false, "Меняй по одному твику за раз. Настройки приватности и интерфейса обычно не повышают FPS сами по себе."));
+        return result;
+    }
+
+    private static string ReadGpuNames()
+    {
+        var names = new List<string>();
+        try
+        {
+            using var video = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Video");
+            if (video is null) return "";
+            foreach (var deviceId in video.GetSubKeyNames())
+            {
+                using var device = video.OpenSubKey(deviceId + @"\0000");
+                var name = Convert.ToString(device?.GetValue("DriverDesc")) ?? Convert.ToString(device?.GetValue("HardwareInformation.AdapterString"));
+                if (!string.IsNullOrWhiteSpace(name) && !names.Contains(name, StringComparer.OrdinalIgnoreCase)) names.Add(name.Trim());
+            }
+        }
+        catch { }
+        return string.Join(", ", names);
+    }
+
+    private TextBox MetricInput(string hint) => new()
+    {
+        Text = "",
+        Tag = hint,
+        ToolTip = hint,
+        MinWidth = 90,
+        Margin = new Thickness(0, 4, 8, 4),
+        Padding = new Thickness(10, 9, 10, 9),
+        Background = Brush("#0A100C"),
+        Foreground = Brush(TextHex),
+        BorderBrush = Brush(LineHex),
+        BorderThickness = new Thickness(1),
+        FontSize = 13
+    };
+
+    private StackPanel MetricPanel(string title, TextBox input)
+    {
+        var p = new StackPanel();
+        p.Children.Add(Txt(title, 10, MutedHex, true));
+        p.Children.Add(input);
+        return p;
+    }
+
+    private void SaveBenchmark(string fpsBeforeText, string lowBeforeText, string fpsAfterText, string lowAfterText)
+    {
+        if (!TryMetric(fpsBeforeText, out var fpsBefore) || !TryMetric(lowBeforeText, out var lowBefore) ||
+            !TryMetric(fpsAfterText, out var fpsAfter) || !TryMetric(lowAfterText, out var lowAfter) ||
+            !double.IsFinite(fpsBefore) || !double.IsFinite(lowBefore) || !double.IsFinite(fpsAfter) || !double.IsFinite(lowAfter) ||
+            fpsBefore <= 0 || lowBefore < 0 || fpsAfter <= 0 || lowAfter < 0)
+        {
+            MessageBox.Show("Введи корректные числовые значения: средний FPS должен быть больше нуля, а 1% low — неотрицательным.", "NOVA PC BOOST — benchmark", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var record = new BenchmarkRecord
+        {
+            Date = DateTimeOffset.Now, FpsBefore = fpsBefore, LowBefore = lowBefore, FpsAfter = fpsAfter, LowAfter = lowAfter,
+            AverageFpsDeltaPercent = (fpsAfter - fpsBefore) / fpsBefore * 100d,
+            LowDeltaPercent = lowBefore <= 0 ? 0 : (lowAfter - lowBefore) / lowBefore * 100d
+        };
+        try
+        {
+            List<BenchmarkRecord> records = new();
+            if (File.Exists(_benchmarkPath))
+            {
+                try { records = JsonSerializer.Deserialize<List<BenchmarkRecord>>(File.ReadAllText(_benchmarkPath)) ?? new(); }
+                catch (Exception ex) { LogAction("WARN", "Не удалось прочитать прошлые benchmark результаты", ex.Message); }
+            }
+            records.Add(record);
+            Directory.CreateDirectory(DataDirectory);
+            var temp = _benchmarkPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try { File.WriteAllText(temp, JsonSerializer.Serialize(records, new JsonSerializerOptions { WriteIndented = true })); File.Move(temp, _benchmarkPath, true); }
+            finally { try { if (File.Exists(temp)) File.Delete(temp); } catch { } }
+            var resultText = $"Средний FPS: {fpsBefore:0.##} → {fpsAfter:0.##} ({record.AverageFpsDeltaPercent:+0.0;-0.0;0.0}%)\n1% low: {lowBefore:0.##} → {lowAfter:0.##} ({(lowBefore <= 0 ? "нет базы" : record.LowDeltaPercent.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture) + "%")})";
+            LogAction("INFO", "Сохранён benchmark", resultText.Replace("\n", "; "));
+            MessageBox.Show(resultText + "\n\nЗамер сохранён локально. Результат достоверен только при сопоставимых условиях тестирования.", "NOVA PC BOOST — результат", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowDiagnostics();
+        }
+        catch (Exception ex)
+        {
+            LogAction("ERROR", "Не удалось сохранить benchmark", ex.Message);
+            MessageBox.Show("Не удалось сохранить замер:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static bool TryMetric(string text, out double value) =>
+        double.TryParse((text ?? "").Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+
+    private sealed class BenchmarkRecord
+    {
+        public DateTimeOffset Date { get; set; }
+        public double FpsBefore { get; set; }
+        public double LowBefore { get; set; }
+        public double FpsAfter { get; set; }
+        public double LowAfter { get; set; }
+        public double AverageFpsDeltaPercent { get; set; }
+        public double LowDeltaPercent { get; set; }
+    }
+
+    private void OpenLocalFile(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) File.WriteAllText(path, path.EndsWith("benchmark_results.json", StringComparison.OrdinalIgnoreCase) ? "[]" : "");
+            Process.Start(new ProcessStartInfo("notepad.exe", "\"" + path + "\"") { UseShellExecute = true });
+            LogAction("INFO", "Открыт локальный файл", Path.GetFileName(path));
+        }
+        catch (Exception ex) { LogAction("ERROR", "Не удалось открыть локальный файл", ex.Message); MessageBox.Show("Не удалось открыть файл:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void LogAction(string level, string action, string details)
+    {
+        try
+        {
+            Directory.CreateDirectory(DataDirectory);
+            string clean(string value) => (value ?? "").Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ');
+            File.AppendAllText(_logPath, $"{DateTimeOffset.Now:O}\t[{clean(level)}]\t{clean(action)}\t{clean(details)}{Environment.NewLine}");
+        }
+        catch { }
     }
 
     private void ShowTools()
@@ -457,6 +689,13 @@ public partial class MainWindow : Window
         ActiveNav(NavRestore);
         AddSection("01 / SAFETY NET", "Резервные копии", "Исходные значения хранятся локально в профиле пользователя.");
         LoadBackups();
+        if (!string.IsNullOrWhiteSpace(_backupLoadError))
+        {
+            var issue = new StackPanel();
+            issue.Children.Add(Txt("⚠ Не удалось прочитать файл резервных копий", 14, "#FFCB70", true));
+            issue.Children.Add(Txt("Файл не перезаписывался автоматически. Проверь его вручную: " + _statePath + "\nПодробности: " + _backupLoadError, 11, MutedHex));
+            PageContent.Children.Add(Card(issue, "#211A10"));
+        }
         if (_regBackups.Count == 0 && _powerBackups.Count == 0 && _serviceBackups.Count == 0)
         {
             var p = new StackPanel(); p.Children.Add(Txt("✓  Пока нечего откатывать", 18, AccentHex, true));
@@ -490,9 +729,13 @@ public partial class MainWindow : Window
         }, false));
     }
 
-    private void ApplyTweak(string id)
+    private void ApplyTweak(string id, bool skipConfirmation = false)
     {
         if (!OperatingSystem.IsWindows()) { MessageBox.Show("Твики доступны только в Windows."); return; }
+        if (!_tweaks.TryGetValue(id, out var spec)) return;
+        if (!skipConfirmation && MessageBox.Show(
+            $"Применить настройку «{spec.Title}»?\n\n{spec.Description}\n\nРиск и ограничения: {spec.Warning}\n\nПрирост FPS не гарантируется. NOVA сначала сохранит исходные значения.",
+            "NOVA PC BOOST — подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try
         {
             if (id == "power")
@@ -504,23 +747,36 @@ public partial class MainWindow : Window
                     if (!match.Success) throw new InvalidOperationException("Не удалось определить текущий план питания.");
                     _powerBackups[id] = match.Value;
                 }
+                SaveBackups();
                 RunChecked("powercfg", "/setactive SCHEME_MIN");
+                _ = RunCapture("powercfg", "/getactivescheme");
             }
             else
             {
                 var values = GetRegValues(id);
+                if (values.Count == 0) throw new InvalidOperationException("Для этого твика не найдены поддерживаемые параметры.");
                 if (!_regBackups.ContainsKey(id))
-                {
                     _regBackups[id] = values.Select(v => RegSnapshot.Capture(v.Hive, v.Key, v.Name)).ToList();
+                SaveBackups();
+                foreach (var v in values)
+                {
+                    using var key = Registry.CurrentUser.CreateSubKey(v.Key) ?? throw new InvalidOperationException("Не удалось открыть раздел реестра: " + v.Key);
+                    key.SetValue(v.Name, v.Value, RegistryValueKind.DWord);
+                    if (!Equals(key.GetValue(v.Name), v.Value))
+                        throw new InvalidOperationException("Проверка после записи не пройдена: " + v.Name);
                 }
-                foreach (var v in values) using (var key = Registry.CurrentUser.CreateSubKey(v.Key)) key?.SetValue(v.Name, v.Value, RegistryValueKind.DWord);
             }
             SaveBackups();
-            StatusText.Text = "ПРИМЕНЁН ТВИК: " + _tweaks[id].Title.ToUpperInvariant();
-            MessageBox.Show("Параметр применён. Исходные значения сохранены — при необходимости откати его во вкладке «Откат изменений».", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
+            LogAction("INFO", "Применён твик", spec.Title + " (" + id + ")");
+            StatusText.Text = "ПРИМЕНЁН ТВИК: " + spec.Title.ToUpperInvariant();
+            MessageBox.Show("Параметр применён и проверен. Исходные значения сохранены в локальной резервной копии. При необходимости используй «Откат изменений».", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
             ShowTweaks();
         }
-        catch (Exception ex) { MessageBox.Show("Не удалось применить твик:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex)
+        {
+            LogAction("ERROR", "Не удалось применить твик", id + ": " + ex.Message);
+            MessageBox.Show("Не удалось применить твик. Резервная копия не удалена, если она уже была создана:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private List<(RegistryKey Hive, string Key, string Name, int Value)> GetRegValues(string id) => id switch
@@ -662,11 +918,12 @@ public partial class MainWindow : Window
             try { RunChecked("sc.exe", "stop " + spec.ServiceName); } catch { /* service may already be stopped or not stoppable */ }
             RunChecked("sc.exe", "config " + spec.ServiceName + " start= disabled");
             SaveBackups();
+            LogAction("INFO", "Отключена служба", spec.ServiceName + "; исходный тип запуска сохранён");
             StatusText.Text = "ОТКЛЮЧЕНА СЛУЖБА: " + spec.ServiceName.ToUpperInvariant();
             MessageBox.Show("Служба отключена. Исходный тип запуска и состояние сохранены для отката.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
             ShowTweaks();
         }
-        catch (Exception ex) { MessageBox.Show("Не удалось изменить службу:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { LogAction("ERROR", "Не удалось изменить службу", spec.ServiceName + ": " + ex.Message); MessageBox.Show("Не удалось изменить службу:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void RestoreService(string id, bool notify = true)
@@ -689,11 +946,12 @@ public partial class MainWindow : Window
             else { try { RunChecked("sc.exe", "stop " + snapshot.ServiceName); } catch { } }
             _serviceBackups.Remove(id);
             SaveBackups();
+            LogAction("INFO", "Восстановлена служба", snapshot.ServiceName + "; исходный тип запуска: " + snapshot.StartMode);
             StatusText.Text = "ВОССТАНОВЛЕНА СЛУЖБА: " + snapshot.ServiceName.ToUpperInvariant();
             if (notify) MessageBox.Show("Исходный тип запуска восстановлен. Состояние службы восстановлено настолько, насколько это разрешает Windows.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
             ShowTweaks();
         }
-        catch (Exception ex) { MessageBox.Show("Не удалось восстановить службу:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { LogAction("ERROR", "Не удалось восстановить службу", id + ": " + ex.Message); MessageBox.Show("Не удалось восстановить службу:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private sealed class ServiceSnapshot
@@ -707,24 +965,41 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (_powerBackups.TryGetValue(id, out var guid)) RunChecked("powercfg", "/setactive " + guid);
+            if (_powerBackups.TryGetValue(id, out var guid))
+            {
+                RunChecked("powercfg", "/setactive " + guid);
+                var active = RunCapture("powercfg", "/getactivescheme");
+                if (!active.Contains(guid, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Windows не подтвердила восстановление исходного плана питания.");
+            }
             if (_regBackups.TryGetValue(id, out var values))
             {
-                foreach (var value in values.AsEnumerable().Reverse()) value.Restore();
-                _regBackups.Remove(id);
+                foreach (var value in values.AsEnumerable().Reverse())
+                {
+                    value.Restore();
+                    if (!value.IsRestored())
+                        throw new InvalidOperationException("Не удалось проверить восстановление значения реестра: " + value.Name);
+                }
             }
+            _regBackups.Remove(id);
             _powerBackups.Remove(id);
             SaveBackups();
+            LogAction("INFO", "Откат твика", _tweaks.GetValueOrDefault(id).Title ?? id);
             StatusText.Text = "ИЗМЕНЕНИЯ ОТКАЧЕНЫ";
-            if (notify) MessageBox.Show("Исходные значения восстановлены.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (notify) MessageBox.Show("Исходные значения восстановлены и проверены.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
             ShowRestore();
         }
-        catch (Exception ex) { MessageBox.Show("Не удалось выполнить откат:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex)
+        {
+            LogAction("ERROR", "Не удалось выполнить откат твика", id + ": " + ex.Message);
+            MessageBox.Show("Не удалось полностью подтвердить откат. Резервная копия оставлена для повторной попытки:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void LoadBackups()
     {
         _regBackups.Clear(); _powerBackups.Clear(); _serviceBackups.Clear();
+        _backupLoadError = null;
         try
         {
             if (!File.Exists(_statePath)) return;
@@ -738,13 +1013,27 @@ public partial class MainWindow : Window
                 foreach (var p in services.EnumerateObject())
                     _serviceBackups[p.Name] = p.Value.Deserialize<ServiceSnapshot>() ?? new();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _backupLoadError = ex.Message;
+            LogAction("ERROR", "Не удалось прочитать резервные копии", ex.Message);
+        }
     }
     private void SaveBackups()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_statePath)!);
-        var data = new { power = _powerBackups, registry = _regBackups, services = _serviceBackups };
-        File.WriteAllText(_statePath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+        Directory.CreateDirectory(DataDirectory);
+        var data = new { schemaVersion = 2, savedAt = DateTimeOffset.Now, power = _powerBackups, registry = _regBackups, services = _serviceBackups };
+        var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+        var tempPath = _statePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, _statePath, true);
+        }
+        finally
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+        }
     }
 
     private void RunTool(string exe)
@@ -809,6 +1098,7 @@ public partial class MainWindow : Window
             if (recycleResult != 0) errors++;
         }
         catch { errors++; }
+        LogAction(errors == 0 ? "INFO" : "WARN", "Очистка системы", $"Удалено файлов: {removedFiles}; освобождено: {freed} байт; пустых папок: {removedDirs}; ошибок/пропусков: {errors}; корзина HRESULT: {recycleResult}");
         StatusText.Text = "ОЧИСТКА СИСТЕМЫ ЗАВЕРШЕНА";
         var recycleText = recycleResult == 0 ? "Корзина: очищена" : "Корзина: не удалось очистить (возможно, ограничены права)";
         MessageBox.Show(
@@ -855,6 +1145,29 @@ public partial class MainWindow : Window
             using var key = hive.OpenSubKey(keyPath, false);
             if (key is null || !key.GetValueNames().Contains(name)) return new() { Key = keyPath, Name = name, Exists = false, Kind = RegistryValueKind.DWord };
             return new() { Key = keyPath, Name = name, Exists = true, Value = key.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames), Kind = key.GetValueKind(name) };
+        }
+        public bool IsRestored()
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(Key, false);
+            bool existsNow = key is not null && key.GetValueNames().Contains(Name);
+            if (!Exists) return !existsNow;
+            if (!existsNow) return false;
+            var actual = key!.GetValue(Name, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+            object? expected = Value is JsonElement element
+                ? element.ValueKind switch
+                {
+                    JsonValueKind.Number when element.TryGetInt32(out var number) => number,
+                    JsonValueKind.Number when element.TryGetInt64(out var longNumber) => longNumber,
+                    JsonValueKind.String => element.GetString() ?? "",
+                    JsonValueKind.True => 1,
+                    JsonValueKind.False => 0,
+                    JsonValueKind.Array => element.EnumerateArray().Select(x => x.GetString() ?? "").ToArray(),
+                    _ => null
+                }
+                : Value;
+            if (actual is Array actualArray && expected is Array expectedArray)
+                return actualArray.Cast<object>().SequenceEqual(expectedArray.Cast<object>());
+            return Equals(actual, expected);
         }
         public void Restore()
         {

@@ -31,20 +31,20 @@ jobs:
       - name: Publish EXE to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.8.0' }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.9.0' }}
         shell: pwsh
         run: |
           $tag = $env:RELEASE_TAG
           $notes = @'
-          NOVA PC BOOST v1.8.0 — major visual redesign, native Windows app on C# / WPF.
+          NOVA PC BOOST v1.9.0 — диагностика, безопасное восстановление и benchmark.
 
-          • Полностью обновлённый NOVA visual system: dark surfaces, lime accents, soft glows and animated controls
-          • Обновлённый dashboard with animated NOVA core and refined system monitor cards
-          • Игровые профили CS2, Rust и Dota 2
-          • Более 60 пользовательских твиков Windows для приватности, интерфейса, Проводника и фоновой активности
-          • 10 управляемых служб Windows с запросом UAC и сохранением исходного типа запуска/состояния для отката
-          • Локальные резервные копии настроек и восстановление изменений
-          • Мониторинг CPU, RAM и диска, системные инструменты и очистка пользовательских временных файлов
+          • Диагностика Windows, версии ОС, CPU, доступных сведений о GPU, RAM, системного диска и плана питания
+          • Сравнение среднего FPS и 1% low до/после с локальным сохранением результатов
+          • Подтверждение твиков с описанием рисков; проверка записи и восстановления значений реестра
+          • Резервные копии записываются атомарно до изменения параметров; ошибки загрузки копии отображаются пользователю
+          • Локальный журнал действий, очистки и ошибок
+          • Управление службами с сохранением исходного типа запуска и состояния для отката
+          • Игровые профили CS2, Rust и Dota 2; системные инструменты и очистка временных файлов
 
           Проверьте EXE антивирусом перед запуском.
           '@
