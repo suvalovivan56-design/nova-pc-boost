@@ -34,7 +34,7 @@ This checklist is for Windows 10 and Windows 11 testing. A successful CI build i
 - [ ] Compare Windows/CPU/RAM/disk readings with Windows system tools.
 - [ ] Verify unknown GPU data is shown as unavailable rather than fabricated.
 - [ ] Reject blank, negative, non-finite, or 1% low values above average FPS.
-- [ ] Save a valid measurement and verify the JSON record.
+- [ ] Save a valid measurement with game/scenario metadata and verify the JSON record.
 - [ ] Corrupt `benchmark_results.json`; verify the previous file is not overwritten.
 - [ ] Repeat a game benchmark in the same scene/settings and record the variance.
 
