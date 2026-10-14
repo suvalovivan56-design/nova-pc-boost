@@ -574,7 +574,7 @@ public partial class MainWindow : Window
         FontSize = 13
     };
 
-    private StackPanel MetricPanel(string title, TextBox input)
+    private StackPanel MetricPanel(string title, UIElement input)
     {
         var p = new StackPanel();
         p.Children.Add(Txt(title, 10, MutedHex, true));
