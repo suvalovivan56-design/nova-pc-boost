@@ -1,0 +1,55 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/ci-windows.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/ci-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Verify version metadata
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content "app/NovaPCBoost.csproj"
+          $version = $project.Project.PropertyGroup.Version
+          if ($version -ne "1.10.0") {
+            throw "Expected project version 1.10.0, got '$version'"
+          }
+
+      - name: Restore
+        run: dotnet restore app/NovaPCBoost.csproj
+
+      - name: Build Release
+        run: dotnet build app/NovaPCBoost.csproj --configuration Release --no-restore
+
+      - name: Publish self-contained Windows x64
+        run: dotnet publish app/NovaPCBoost.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output artifacts/publish
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOVA-PC-BOOST-v1.10.0-win-x64
+          path: artifacts/publish/
+          if-no-files-found: error
+          retention-days: 14
