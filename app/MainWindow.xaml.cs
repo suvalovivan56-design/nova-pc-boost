@@ -446,8 +446,8 @@ public partial class MainWindow : Window
         }
         var clean = new StackPanel();
         clean.Children.Add(Txt("Очистка временных файлов", 15, TextHex, true));
-        clean.Children.Add(Txt("Удаляет только файлы старше 48 часов из пользовательских Temp-папок. Занятые файлы пропускаются.", 11, MutedHex));
-        clean.Children.Add(Btn("Запустить очистку", (_, _) => CleanTemp()));
+        clean.Children.Add(Txt("Одна кнопка: временные файлы пользователя и Windows старше 48 часов, пустые папки Temp и корзина. Личные файлы, загрузки и кэш браузеров не удаляются; занятые файлы пропускаются.", 11, MutedHex));
+        clean.Children.Add(Btn("⚡ Очистить систему", (_, _) => CleanTemp()));
         PageContent.Children.Add(Card(clean));
     }
 
@@ -759,29 +759,65 @@ public partial class MainWindow : Window
     }
     private void CleanTemp()
     {
-        if (MessageBox.Show("Удалить только пользовательские временные файлы старше 48 часов? Занятые файлы будут пропущены.", "NOVA PC BOOST", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        var roots = new[] { Path.GetTempPath(), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp") }.Distinct();
-        var cutoff = DateTime.UtcNow.AddHours(-48); int removed = 0, errors = 0; long freed = 0;
+        if (MessageBox.Show(
+            "Выполнить очистку?\n\n• временные файлы пользователя и Windows старше 48 часов\n• корзина Windows\n\nЛичные документы, загрузки и кэш браузеров не затрагиваются. Занятые файлы будут пропущены.",
+            "NOVA PC BOOST — очистка системы", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var roots = new[]
+        {
+            Path.GetTempPath(),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp")
+        }.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.OrdinalIgnoreCase);
+        var cutoff = DateTime.UtcNow.AddHours(-48);
+        int removedFiles = 0, removedDirs = 0, errors = 0;
+        long freed = 0;
         foreach (var root in roots)
         {
             if (!Directory.Exists(root)) continue;
             try
             {
-                foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.TopDirectoryOnly))
+                foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
                 {
                     try
                     {
                         var info = new FileInfo(file);
-                        if (info.LastWriteTimeUtc > cutoff || (info.Attributes & FileAttributes.ReparsePoint) != 0) continue;
-                        long size = info.Length; info.Delete(); removed++; freed += size;
+                        if ((info.Attributes & FileAttributes.ReparsePoint) != 0 || info.LastWriteTimeUtc > cutoff) continue;
+                        long size = info.Length;
+                        info.Delete();
+                        removedFiles++;
+                        freed += size;
+                    }
+                    catch { errors++; }
+                }
+                foreach (var dir in Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories).OrderByDescending(p => p.Length))
+                {
+                    try
+                    {
+                        var info = new DirectoryInfo(dir);
+                        if ((info.Attributes & FileAttributes.ReparsePoint) != 0 || info.LastWriteTimeUtc > cutoff) continue;
+                        if (!info.EnumerateFileSystemInfos().Any()) { info.Delete(); removedDirs++; }
                     }
                     catch { errors++; }
                 }
             }
             catch { errors++; }
         }
-        MessageBox.Show($"Удалено файлов: {removed}\nОсвобождено: {freed / 1048576d:0.0} МБ\nПропущено файлов: {errors}", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
+        int recycleResult = -1;
+        try
+        {
+            recycleResult = SHEmptyRecycleBin(IntPtr.Zero, null, 0x00000001 | 0x00000004);
+            if (recycleResult != 0) errors++;
+        }
+        catch { errors++; }
+        StatusText.Text = "ОЧИСТКА СИСТЕМЫ ЗАВЕРШЕНА";
+        var recycleText = recycleResult == 0 ? "Корзина: очищена" : "Корзина: не удалось очистить (возможно, ограничены права)";
+        MessageBox.Show(
+            $"Удалено файлов: {removedFiles}\nУдалено пустых папок: {removedDirs}\nОсвобождено во временных папках: {freed / 1048576d:0.0} МБ\n{recycleText}\nПропущено/ошибок: {errors}",
+            "NOVA PC BOOST — результат очистки", MessageBoxButton.OK, MessageBoxImage.Information);
     }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHEmptyRecycleBin(IntPtr hwnd, string? pszRootPath, uint dwFlags);
 
     private static string RunCapture(string exe, string args)
     {
