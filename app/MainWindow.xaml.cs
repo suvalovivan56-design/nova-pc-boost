@@ -713,16 +713,26 @@ public partial class MainWindow : Window
             var tag = root.TryGetProperty("tag_name", out var tagElement) ? tagElement.GetString() : null;
             var url = root.TryGetProperty("html_url", out var urlElement) ? urlElement.GetString() : null;
             if (string.IsNullOrWhiteSpace(tag) || string.IsNullOrWhiteSpace(url)) throw new InvalidOperationException("GitHub не вернул тег или ссылку релиза.");
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var releaseUri) ||
+                !string.Equals(releaseUri.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
+                !releaseUri.AbsolutePath.StartsWith("/suvalovivan56-design/nova-pc-boost/releases/", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Ссылка релиза не прошла проверку официального домена GitHub.");
             var latest = tag.TrimStart('v', 'V');
-            if (Version.TryParse(latest, out var latestVersion) && Version.TryParse(GetAppVersion(), out var currentVersion) && latestVersion > currentVersion)
+            if (!Version.TryParse(latest, out var latestVersion) || !Version.TryParse(GetAppVersion(), out var currentVersion))
+                throw new InvalidOperationException("Не удалось сравнить версии приложения и релиза.");
+            if (latestVersion > currentVersion)
             {
                 LogAction("INFO", "Доступно обновление", tag);
                 if (MessageBox.Show($"Доступна NOVA PC BOOST {tag}.\nУстановлена версия {GetAppVersion()}.\n\nОткрыть официальный релиз GitHub? Программа ничего не скачает и не установит сама.", "NOVA PC BOOST — обновление", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                    Process.Start(new ProcessStartInfo(releaseUri.AbsoluteUri) { UseShellExecute = true });
+            }
+            else if (latestVersion == currentVersion)
+            {
+                MessageBox.Show($"Установлена последняя опубликованная версия {tag}.", "NOVA PC BOOST — обновления", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
-                MessageBox.Show($"Установлена версия {GetAppVersion()}.\nПоследний опубликованный релиз: {tag}.\n\nЕсли версии совпадают, обновление не требуется.", "NOVA PC BOOST — обновления", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Текущая сборка {GetAppVersion()} новее последнего опубликованного релиза {tag}. Возможно, релиз ещё не опубликован.", "NOVA PC BOOST — обновления", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             LogAction("INFO", "Проверка обновлений", "Установлено " + GetAppVersion() + "; последний релиз " + tag);
         }
@@ -771,6 +781,11 @@ public partial class MainWindow : Window
         }
         PageContent.Children.Add(Btn("Откатить все изменения", (_, _) =>
         {
+            if (_serviceBackups.Count > 0 && !IsAdministrator())
+            {
+                MessageBox.Show("В резервных копиях есть службы Windows. Массовый откат остановлен, чтобы не прервать операцию на запросе UAC. Откатывай службы по одной кнопкой «Восстановить службу» — для каждой Windows запросит права администратора.", "NOVA PC BOOST — откат", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             if (MessageBox.Show("Откатить все сохранённые изменения?", "NOVA PC BOOST", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             foreach (var id in _regBackups.Keys.Concat(_powerBackups.Keys).Distinct().ToList()) RestoreTweak(id, false);
             foreach (var id in _serviceBackups.Keys.ToList()) RestoreService(id, false);
