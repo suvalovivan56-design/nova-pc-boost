@@ -110,6 +110,21 @@ public partial class MainWindow : Window
     };
     private readonly Dictionary<string, List<RegSnapshot>> _regBackups = new();
     private readonly Dictionary<string, string> _powerBackups = new();
+    private readonly Dictionary<string, (string ServiceName, string Title, string Description, string Warning)> _services = new()
+    {
+        ["diagtrack"] = ("DiagTrack", "Connected User Experiences and Telemetry", "Диагностические события и связанные функции телеметрии.", "Отключение может влиять на диагностику и некоторые функции Windows."),
+        ["werSvc"] = ("WerSvc", "Windows Error Reporting", "Отчёты об ошибках Windows.", "Может затруднить сбор и отправку отчётов об ошибках."),
+        ["dosvc"] = ("DoSvc", "Delivery Optimization", "Оптимизация доставки обновлений.", "Может изменить способ загрузки обновлений Windows."),
+        ["mapsbroker"] = ("MapsBroker", "Downloaded Maps Manager", "Служба офлайн-карт.", "Офлайн-карты могут потерять часть функций."),
+        ["retaildemo"] = ("RetailDemo", "Retail Demo Service", "Демонстрационная служба розничного режима.", "Оставь включённой, если устройство используется в демонстрационном режиме."),
+        ["xblAuth"] = ("XblAuthManager", "Xbox Live Auth Manager", "Авторизация Xbox Live.", "Может нарушить вход в Xbox и некоторые игры Microsoft."),
+        ["xblGameSave"] = ("XblGameSave", "Xbox Live Game Save", "Сохранения Xbox Live.", "Облачные сохранения Xbox могут не синхронизироваться."),
+        ["xboxNet"] = ("XboxNetApiSvc", "Xbox Live Networking Service", "Сетевые функции Xbox Live.", "Сетевые функции Xbox и отдельных игр могут перестать работать."),
+        ["xboxGip"] = ("XboxGipSvc", "Xbox Accessory Management Service", "Поддержка аксессуаров Xbox.", "Может затронуть аксессуары Xbox."),
+        ["wsearch"] = ("WSearch", "Windows Search", "Индексирование и быстрый поиск файлов.", "Поиск в меню Пуск и Проводнике может стать медленнее."),
+    };
+    private readonly Dictionary<string, ServiceSnapshot> _serviceBackups = new();
+
     private readonly Dictionary<string, (string Title, string Description)> _tools = new()
     {
         ["taskmgr.exe"] = ("Диспетчер задач", "Процессы, нагрузка CPU/RAM и автозагрузка."),
@@ -124,6 +139,7 @@ public partial class MainWindow : Window
         ShowDashboard();
         _timer.Tick += (_, _) => UpdateStats();
         _timer.Start();
+        Loaded += (_, _) => HandleElevatedServiceCommand();
     }
 
     private static Brush Brush(string hex) => new BrushConverter().ConvertFromString(hex) as Brush ?? Brushes.White;
@@ -401,6 +417,20 @@ public partial class MainWindow : Window
             p.Children.Add(actions);
             PageContent.Children.Add(Card(p));
         }
+        AddSection("02 / WINDOWS SERVICES", "Службы Windows", "Эти действия требуют подтверждения UAC. NOVA сохраняет исходный тип запуска и состояние службы для отката. Не отключай службы, если пользуешься их функциями.");
+        foreach (var (id, spec) in _services)
+        {
+            var p = new StackPanel();
+            p.Children.Add(Txt(spec.Title, 15, TextHex, true));
+            p.Children.Add(Txt(spec.ServiceName + "  •  " + spec.Description, 11, MutedHex));
+            p.Children.Add(Txt("ВНИМАНИЕ: " + spec.Warning, 10, "#FFCB70"));
+            p.Children.Add(Txt("Текущее состояние: " + GetServiceStatus(spec.ServiceName), 10, CyanHex));
+            var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
+            actions.Children.Add(Btn("Отключить службу", (_, _) => ApplyService(id)));
+            actions.Children.Add(Btn("Восстановить", (_, _) => RestoreService(id), false));
+            p.Children.Add(actions);
+            PageContent.Children.Add(Card(p));
+        }
     }
 
     private void ShowTools()
@@ -441,12 +471,20 @@ public partial class MainWindow : Window
         ActiveNav(NavRestore);
         AddSection("01 / SAFETY NET", "Резервные копии", "Исходные значения хранятся локально в профиле пользователя.");
         LoadBackups();
-        if (_regBackups.Count == 0 && _powerBackups.Count == 0)
+        if (_regBackups.Count == 0 && _powerBackups.Count == 0 && _serviceBackups.Count == 0)
         {
             var p = new StackPanel(); p.Children.Add(Txt("✓  Пока нечего откатывать", 18, AccentHex, true));
             p.Children.Add(Txt("Когда применишь твик, NOVA сохранит исходные значения и покажет их здесь.", 12, MutedHex));
             PageContent.Children.Add(Card(p));
             return;
+        }
+        foreach (var id in _serviceBackups.Keys.ToList())
+        {
+            var p = new StackPanel();
+            p.Children.Add(Txt(_services.GetValueOrDefault(id).Title ?? id, 15, TextHex, true));
+            p.Children.Add(Txt("Исходное состояние службы сохранено локально.", 11, MutedHex));
+            p.Children.Add(Btn("Восстановить службу", (_, _) => RestoreService(id), false));
+            PageContent.Children.Add(Card(p));
         }
         foreach (var id in _regBackups.Keys.Concat(_powerBackups.Keys).Distinct().ToList())
         {
@@ -460,6 +498,7 @@ public partial class MainWindow : Window
         {
             if (MessageBox.Show("Откатить все сохранённые изменения?", "NOVA PC BOOST", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             foreach (var id in _regBackups.Keys.Concat(_powerBackups.Keys).Distinct().ToList()) RestoreTweak(id, false);
+            foreach (var id in _serviceBackups.Keys.ToList()) RestoreService(id, false);
             MessageBox.Show("Операция отката завершена.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
             ShowRestore();
         }, false));
@@ -549,20 +588,6 @@ public partial class MainWindow : Window
         "background_apps" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications", "GlobalUserDisabled", 1) },
         "disable_maps_auto" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\Maps", "AutoUpdateEnabled", 0) },
         "maps_download_policy" => new() { (Registry.CurrentUser, "Software\\Policies\\Microsoft\\Windows\\Maps", "AutoDownloadAndUpdateMapData", 0) },
-        "camera_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\webcam", "Value", 0) },
-        "microphone_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone", "Value", 0) },
-        "contacts_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\contacts", "Value", 0) },
-        "calendar_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\appointments", "Value", 0) },
-        "email_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\email", "Value", 0) },
-        "tasks_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\userDataTasks", "Value", 0) },
-        "call_history_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\phoneCallHistory", "Value", 0) },
-        "radio_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\radios", "Value", 0) },
-        "notification_listener" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\userNotificationListener", "Value", 0) },
-        "documents_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\documentsLibrary", "Value", 0) },
-        "pictures_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\picturesLibrary", "Value", 0) },
-        "videos_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\videosLibrary", "Value", 0) },
-        "filesystem_access" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\broadFileSystemAccess", "Value", 0) },
-        "app_diagnostics" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\appDiagnostics", "Value", 0) },
         "notifications_global" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", "ToastEnabled", 0) },
         "disable_toast_policy" => new() { (Registry.CurrentUser, "Software\\Policies\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", "NoToastApplicationNotification", 1) },
         "nearby_sharing" => new() { (Registry.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\CDP", "NearShareChannelUserAuthzPolicy", 0) },
@@ -576,6 +601,121 @@ public partial class MainWindow : Window
         "disable_consumer_tips" => new() { (Registry.CurrentUser, "Software\\Policies\\Microsoft\\Windows\\CloudContent", "DisableConsumerAccountStateContent", 1) },
         _ => new()
     };
+
+    private bool IsAdministrator()
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    }
+
+    private void HandleElevatedServiceCommand()
+    {
+        var args = Environment.GetCommandLineArgs();
+        if (args.Length < 4 || args[1] != "--nova-service") return;
+        var action = args[2]; var id = args[3];
+        if (!_services.ContainsKey(id)) return;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (action == "disable") ApplyService(id);
+            else if (action == "restore") RestoreService(id);
+        }));
+    }
+
+    private bool EnsureServiceElevation(string action, string id)
+    {
+        if (IsAdministrator()) return true;
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exe)) throw new InvalidOperationException("Не удалось определить путь к приложению.");
+            var start = new ProcessStartInfo(exe) { UseShellExecute = true, Verb = "runas", Arguments = $"--nova-service {action} {id}" };
+            Process.Start(start);
+            Close();
+        }
+        catch (System.ComponentModel.Win32Exception) { MessageBox.Show("Запуск с правами администратора отменён.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information); }
+        catch (Exception ex) { MessageBox.Show("Не удалось запросить права администратора:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+        return false;
+    }
+
+    private string GetServiceStatus(string serviceName)
+    {
+        try
+        {
+            var output = RunCapture("sc.exe", "query " + serviceName);
+            var state = System.Text.RegularExpressions.Regex.Match(output, @"STATE\s*:\s*\d+\s+(\w+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var config = RunCapture("sc.exe", "qc " + serviceName);
+            var start = System.Text.RegularExpressions.Regex.Match(config, @"START_TYPE\s*:\s*\d+\s+(\w+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return (state.Success ? state.Groups[1].Value : "UNKNOWN") + " / " + (start.Success ? start.Groups[1].Value : "UNKNOWN");
+        }
+        catch { return "недоступна или отсутствует"; }
+    }
+
+    private ServiceSnapshot CaptureService(string serviceName)
+    {
+        var config = RunCapture("sc.exe", "qc " + serviceName);
+        var match = System.Text.RegularExpressions.Regex.Match(config, @"START_TYPE\s*:\s*(\d+)\s+(\w+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success) throw new InvalidOperationException("Не удалось определить исходный тип запуска службы " + serviceName);
+        var state = RunCapture("sc.exe", "query " + serviceName);
+        return new ServiceSnapshot
+        {
+            ServiceName = serviceName,
+            StartMode = match.Groups[2].Value.ToUpperInvariant(),
+            WasRunning = System.Text.RegularExpressions.Regex.IsMatch(state, @"STATE\s*:\s*\d+\s+RUNNING", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+        };
+    }
+
+    private void ApplyService(string id)
+    {
+        if (!OperatingSystem.IsWindows() || !_services.ContainsKey(id)) return;
+        if (!EnsureServiceElevation("disable", id)) return;
+        var spec = _services[id];
+        try
+        {
+            if (!_serviceBackups.ContainsKey(id)) _serviceBackups[id] = CaptureService(spec.ServiceName);
+            SaveBackups();
+            try { RunChecked("sc.exe", "stop " + spec.ServiceName); } catch { /* service may already be stopped or not stoppable */ }
+            RunChecked("sc.exe", "config " + spec.ServiceName + " start= disabled");
+            SaveBackups();
+            StatusText.Text = "ОТКЛЮЧЕНА СЛУЖБА: " + spec.ServiceName.ToUpperInvariant();
+            MessageBox.Show("Служба отключена. Исходный тип запуска и состояние сохранены для отката.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowTweaks();
+        }
+        catch (Exception ex) { MessageBox.Show("Не удалось изменить службу:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void RestoreService(string id, bool notify = true)
+    {
+        if (!_services.ContainsKey(id) || !_serviceBackups.TryGetValue(id, out var snapshot)) return;
+        if (!EnsureServiceElevation("restore", id)) return;
+        try
+        {
+            var mode = snapshot.StartMode switch
+            {
+                "BOOT_START" => "boot",
+                "SYSTEM_START" => "system",
+                "AUTO_START" => "auto",
+                "DEMAND_START" => "demand",
+                "DISABLED" => "disabled",
+                _ => throw new InvalidOperationException("Неизвестный исходный тип запуска: " + snapshot.StartMode)
+            };
+            RunChecked("sc.exe", $"config {snapshot.ServiceName} start= {mode}");
+            if (snapshot.WasRunning) { try { RunChecked("sc.exe", "start " + snapshot.ServiceName); } catch { } }
+            else { try { RunChecked("sc.exe", "stop " + snapshot.ServiceName); } catch { } }
+            _serviceBackups.Remove(id);
+            SaveBackups();
+            StatusText.Text = "ВОССТАНОВЛЕНА СЛУЖБА: " + snapshot.ServiceName.ToUpperInvariant();
+            if (notify) MessageBox.Show("Исходный тип запуска восстановлен. Состояние службы восстановлено настолько, насколько это разрешает Windows.", "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowTweaks();
+        }
+        catch (Exception ex) { MessageBox.Show("Не удалось восстановить службу:\n" + ex.Message, "NOVA PC BOOST", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private sealed class ServiceSnapshot
+    {
+        public string ServiceName { get; set; } = "";
+        public string StartMode { get; set; } = "";
+        public bool WasRunning { get; set; }
+    }
 
     private void RestoreTweak(string id, bool notify = true)
     {
@@ -608,13 +748,16 @@ public partial class MainWindow : Window
             if (doc.RootElement.TryGetProperty("registry", out var registry))
                 foreach (var p in registry.EnumerateObject())
                     _regBackups[p.Name] = p.Value.Deserialize<List<RegSnapshot>>() ?? new();
+            if (doc.RootElement.TryGetProperty("services", out var services))
+                foreach (var p in services.EnumerateObject())
+                    _serviceBackups[p.Name] = p.Value.Deserialize<ServiceSnapshot>() ?? new();
         }
         catch { }
     }
     private void SaveBackups()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_statePath)!);
-        var data = new { power = _powerBackups, registry = _regBackups };
+        var data = new { power = _powerBackups, registry = _regBackups, services = _serviceBackups };
         File.WriteAllText(_statePath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
     }
 
