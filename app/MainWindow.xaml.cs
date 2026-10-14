@@ -581,9 +581,9 @@ public partial class MainWindow : Window
         if (!TryMetric(fpsBeforeText, out var fpsBefore) || !TryMetric(lowBeforeText, out var lowBefore) ||
             !TryMetric(fpsAfterText, out var fpsAfter) || !TryMetric(lowAfterText, out var lowAfter) ||
             !double.IsFinite(fpsBefore) || !double.IsFinite(lowBefore) || !double.IsFinite(fpsAfter) || !double.IsFinite(lowAfter) ||
-            fpsBefore <= 0 || lowBefore < 0 || fpsAfter <= 0 || lowAfter < 0)
+            fpsBefore <= 0 || lowBefore < 0 || fpsAfter <= 0 || lowAfter < 0 || lowBefore > fpsBefore || lowAfter > fpsAfter)
         {
-            MessageBox.Show("Введи корректные числовые значения: средний FPS должен быть больше нуля, а 1% low — неотрицательным.", "NOVA PC BOOST — benchmark", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Введи корректные значения: средний FPS должен быть больше нуля, 1% low — неотрицательным и не выше среднего FPS.", "NOVA PC BOOST — benchmark", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         var record = new BenchmarkRecord
@@ -597,8 +597,12 @@ public partial class MainWindow : Window
             List<BenchmarkRecord> records = new();
             if (File.Exists(_benchmarkPath))
             {
-                try { records = JsonSerializer.Deserialize<List<BenchmarkRecord>>(File.ReadAllText(_benchmarkPath)) ?? new(); }
-                catch (Exception ex) { LogAction("WARN", "Не удалось прочитать прошлые benchmark результаты", ex.Message); }
+                try { records = JsonSerializer.Deserialize<List<BenchmarkRecord>>(File.ReadAllText(_benchmarkPath)) ?? throw new InvalidDataException("Файл результатов пуст или содержит некорректный JSON."); }
+                catch (Exception ex)
+                {
+                    LogAction("ERROR", "Не удалось прочитать прошлые benchmark результаты; файл не перезаписан", ex.Message);
+                    throw new InvalidDataException("Не удалось прочитать историю замеров. Файл не был перезаписан, чтобы сохранить старые результаты. Проверь файл: " + _benchmarkPath, ex);
+                }
             }
             records.Add(record);
             Directory.CreateDirectory(DataDirectory);
