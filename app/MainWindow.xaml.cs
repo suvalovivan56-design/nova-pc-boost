@@ -58,8 +58,30 @@ public partial class MainWindow : Window
     private static Brush Brush(string hex) => new BrushConverter().ConvertFromString(hex) as Brush ?? Brushes.White;
     private TextBlock Txt(string text, double size = 12, string color = TextHex, bool bold = false) =>
         new() { Text = text, FontSize = size, Foreground = Brush(color), FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, TextWrapping = TextWrapping.Wrap };
-    private Border Card(UIElement child, string background = PanelHex, Thickness? padding = null) =>
-        new() { Child = child, Background = Brush(background), BorderBrush = Brush(LineHex), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = padding ?? new Thickness(18), Margin = new Thickness(0, 0, 0, 12) };
+    private Border Card(UIElement child, string background = PanelHex, Thickness? padding = null)
+    {
+        Brush surface = background == "#111B22"
+            ? new LinearGradientBrush((Color)ColorConverter.ConvertFromString("#18251A"), (Color)ColorConverter.ConvertFromString("#0D1410"), new Point(0, 0), new Point(1, 1))
+            : Brush(background);
+        return new Border
+        {
+            Child = child,
+            Background = surface,
+            BorderBrush = Brush(background == "#111B22" ? "#344B32" : LineHex),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(17),
+            Padding = padding ?? new Thickness(20),
+            Margin = new Thickness(0, 0, 0, 14),
+            SnapsToDevicePixels = true,
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = Colors.Black,
+                BlurRadius = 17,
+                ShadowDepth = 2,
+                Opacity = 0.13
+            }
+        };
+    }
     private StackPanel Stack(double spacing = 8) => new() { Orientation = Orientation.Vertical, Margin = new Thickness(0), };
     private Button Btn(string text, RoutedEventHandler click, bool primary = true)
     {
@@ -70,9 +92,11 @@ public partial class MainWindow : Window
     private void AddSection(string eyebrow, string title, string subtitle)
     {
         PageContent.Children.Add(Txt(eyebrow, 10, AccentHex, true));
-        var titleBlock = Txt(title, 24, TextHex, true);
-        titleBlock.Margin = new Thickness(0, 6, 0, 4);
+        var titleBlock = Txt(title, 26, TextHex, true);
+        titleBlock.Margin = new Thickness(0, 6, 0, 5);
         PageContent.Children.Add(titleBlock);
+        var sectionRule = new Border { Height = 2, Width = 44, Background = Brush(AccentHex), HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 0, 0, 9) };
+        PageContent.Children.Add(sectionRule);
         var sub = Txt(subtitle, 12, MutedHex);
         sub.Margin = new Thickness(0, 0, 0, 17);
         PageContent.Children.Add(sub);
@@ -93,11 +117,11 @@ public partial class MainWindow : Window
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         });
-        NavDashboard.Background = Brush("#0B1017"); NavDashboard.Foreground = Brush(MutedHex);
-        NavProfiles.Background = Brush("#0B1017"); NavProfiles.Foreground = Brush(MutedHex);
-        NavTweaks.Background = Brush("#0B1017"); NavTweaks.Foreground = Brush(MutedHex);
-        NavTools.Background = Brush("#0B1017"); NavTools.Foreground = Brush(MutedHex);
-        NavRestore.Background = Brush("#0B1017"); NavRestore.Foreground = Brush(MutedHex);
+        NavDashboard.Background = Brush("#0B100C"); NavDashboard.Foreground = Brush(MutedHex);
+        NavProfiles.Background = Brush("#0B100C"); NavProfiles.Foreground = Brush(MutedHex);
+        NavTweaks.Background = Brush("#0B100C"); NavTweaks.Foreground = Brush(MutedHex);
+        NavTools.Background = Brush("#0B100C"); NavTools.Foreground = Brush(MutedHex);
+        NavRestore.Background = Brush("#0B100C"); NavRestore.Foreground = Brush(MutedHex);
     }
     private void ActiveNav(Button button) { button.Background = Brush("#19251B"); button.Foreground = Brush(AccentHex); }
     private void Dashboard_Click(object sender, RoutedEventArgs e) => ShowDashboard();
@@ -115,16 +139,33 @@ public partial class MainWindow : Window
         hero.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var left = new StackPanel { Margin = new Thickness(22, 22, 10, 22), VerticalAlignment = VerticalAlignment.Center };
         left.Children.Add(Txt("✳  YOUR WINDOWS, TUNED BY YOU", 10, AccentHex, true));
-        var headline = Txt("ГОТОВ К ИГРЕ?", 30, TextHex, true); headline.Margin = new Thickness(0, 12, 0, 5); left.Children.Add(headline);
+        var headline = Txt("ГОТОВ К ИГРЕ?", 34, TextHex, true); headline.Margin = new Thickness(0, 12, 0, 5); left.Children.Add(headline);
         left.Children.Add(Txt("Твики, игровые профили и системные инструменты — в одном аккуратном приложении для Windows.", 13, MutedHex));
         var actions = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
         actions.Children.Add(Btn("Открыть твики  →", (_, _) => ShowTweaks()));
         actions.Children.Add(Btn("Игровые профили", (_, _) => ShowProfiles(), false));
         left.Children.Add(actions);
-        var right = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        right.Children.Add(Txt("NOVA", 38, AccentHex, true));
-        right.Children.Add(Txt("CONTROL CENTER", 10, CyanHex, true));
-        right.Children.Add(Txt("● READY", 10, AccentHex, true));
+        var right = new Grid { Width = 230, Height = 184, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        var outerRing = new Ellipse { Width = 158, Height = 158, Stroke = Brush("#47633A"), StrokeThickness = 1, Opacity = 0.72, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var innerRing = new Ellipse { Width = 124, Height = 124, Stroke = Brush(AccentHex), StrokeThickness = 1, Opacity = 0.22, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var orbitRing = new Ellipse { Width = 174, Height = 66, Stroke = Brush(CyanHex), StrokeThickness = 1, Opacity = 0.55, StrokeDashArray = new DoubleCollection { 2, 3 }, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, RenderTransformOrigin = new Point(0.5, 0.5) };
+        var orbitRotation = new RotateTransform(-26);
+        orbitRing.RenderTransform = orbitRotation;
+        orbitRing.Loaded += (_, _) => orbitRotation.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(-26, 334, TimeSpan.FromSeconds(24)) { RepeatBehavior = RepeatBehavior.Forever });
+        var coreGlow = new Ellipse { Width = 91, Height = 91, Fill = Brush("#19301A"), Stroke = Brush("#527941"), StrokeThickness = 1, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var coreLetter = Txt("N", 64, AccentHex, true);
+        coreLetter.HorizontalAlignment = HorizontalAlignment.Center;
+        coreLetter.VerticalAlignment = VerticalAlignment.Center;
+        coreLetter.Margin = new Thickness(0, -5, 6, 0);
+        var orbitLabel = Txt("LIVE ENGINE  /  01", 8, MutedHex, true);
+        orbitLabel.HorizontalAlignment = HorizontalAlignment.Right;
+        orbitLabel.VerticalAlignment = VerticalAlignment.Top;
+        orbitLabel.Margin = new Thickness(0, 9, 0, 0);
+        var readyLabel = Txt("● READY", 9, AccentHex, true);
+        readyLabel.HorizontalAlignment = HorizontalAlignment.Left;
+        readyLabel.VerticalAlignment = VerticalAlignment.Bottom;
+        readyLabel.Margin = new Thickness(3, 0, 0, 8);
+        right.Children.Add(outerRing); right.Children.Add(innerRing); right.Children.Add(orbitRing); right.Children.Add(coreGlow); right.Children.Add(coreLetter); right.Children.Add(orbitLabel); right.Children.Add(readyLabel);
         Grid.SetColumn(left, 0); Grid.SetColumn(right, 1); hero.Children.Add(left); hero.Children.Add(right);
         PageContent.Children.Add(Card(hero, "#111B22", new Thickness(4)));
         AddSection("01 / LIVE MONITOR", "Состояние системы", "Показатели обновляются автоматически и не отправляются в интернет.");
